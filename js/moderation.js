@@ -59,8 +59,6 @@ const Moderation = (() => {
       flags.push("Bloqueado: posible contenido de menores con violencia, abuso o sexualidad.");
     }
 
-    flags.push(...detectPersonalData(content));
-
     if (containsAny(content, directThreatTerms)) {
       flags.push("Bloqueado: amenaza directa o lenguaje de dano fisico.");
     }

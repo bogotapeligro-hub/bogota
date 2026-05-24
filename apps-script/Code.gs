@@ -800,11 +800,6 @@ function validateServerContent(text, isComment) {
   if (hasMinor && hasAbuse) flags.push("Bloqueado: posible contenido de menores con violencia, abuso o sexualidad.");
   if (threatTerms.some(function(t) { return normalized.indexOf(t) !== -1; })) flags.push("Bloqueado: amenaza directa o lenguaje de daño físico.");
   if (crimeTerms.some(function(t) { return normalized.indexOf(t) !== -1; })) flags.push("Bloqueado: instrucciones para cometer delitos o causar daño.");
-  if (/(?:\+?57\s?)?(?:3\d{2}|60\d|1)\s?\d{3}\s?\d{4}/i.test(text)) flags.push("Bloqueado: posible teléfono privado.");
-  if (/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(text)) flags.push("Bloqueado: posible correo privado.");
-  if (/\b(?:cc|c\.c\.|cedula|documento)\s*[:#-]?\s*\d{6,12}\b/i.test(normalized)) flags.push("Bloqueado: posible documento privado.");
-  if (/\b(?:calle|carrera|cra\.?|cl\.?|transversal|tv\.?|diagonal|dg\.?)\s+\d{1,3}\s*[a-z]?\s*(?:#|nro\.?|no\.?)\s*\d{1,3}/i.test(normalized)) flags.push("Bloqueado: posible dirección exacta.");
-
   return { allowed: flags.length === 0, flags: flags, message: flags[0] || "Contenido permitido." };
 }
 
