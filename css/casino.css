@@ -31,6 +31,7 @@ html, body {
   line-height: 1.5;
   min-height: 100vh;
   overflow-x: hidden;
+  overflow-y: auto;
 }
 
 /* ---- GATE SCREEN ---- */
@@ -120,7 +121,10 @@ html, body {
 }
 
 /* ---- CASINO MAIN ---- */
-.casino-main { min-height: 100vh; }
+.casino-main {
+  min-height: 100vh;
+  overflow-x: hidden;
+}
 
 /* Header */
 .casino-header {
@@ -223,6 +227,7 @@ button.disabled-play-button {
   padding: 1rem;
   background: rgba(0,0,0,.78);
   backdrop-filter: blur(8px);
+  overflow-y: auto;
 }
 
 .no-coins-box {
@@ -517,4 +522,15 @@ button.disabled-play-button {
   .section-title { font-size: 2.2rem; }
   .gate-box { padding: 2rem 1.5rem; }
   .gate-title { font-size: 2rem; }
+  .casino-games-section {
+    padding-bottom: calc(3rem + env(safe-area-inset-bottom, 0px));
+  }
+  .no-coins-modal {
+    align-items: start;
+    place-items: start center;
+  }
+  .no-coins-box {
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
+  }
 }

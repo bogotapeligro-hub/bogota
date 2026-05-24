@@ -31,8 +31,9 @@ html, body {
   color: var(--text-main);
   font-family: var(--font-body);
   font-size: 15px;
-  height: 100%;
+  min-height: 100%;
   overflow-x: hidden;
+  overflow-y: auto;
 }
 
 /* ============================================================
@@ -182,6 +183,11 @@ html, body {
   pointer-events: auto;
 }
 .mode-btn:hover { transform: translateY(-6px) rotateX(8deg) translateZ(18px); }
+.mode-btn.is-matchmaking-disabled {
+  opacity: .55;
+  cursor: wait;
+  transform: none;
+}
 
 .mode-btn-bot:hover { border-color: var(--neon-cyan); box-shadow: 0 8px 30px rgba(0,229,255,.15); }
 .mode-btn-pvp:hover { border-color: var(--neon-yellow); box-shadow: 0 8px 30px rgba(255,214,0,.15); }
@@ -276,6 +282,7 @@ html, body {
     radial-gradient(ellipse at 50% 100%, rgba(30,0,0,.4) 0%, transparent 60%),
     var(--dark-bg);
   position: relative;
+  overflow: visible;
 }
 
 .round-intro-overlay {
@@ -1200,6 +1207,7 @@ html, body {
   .mode-select {
     align-items: flex-start;
     padding: 1rem;
+    min-height: auto;
   }
 
   .mode-box {
@@ -1213,6 +1221,7 @@ html, body {
 
   .game-arena {
     min-height: auto;
+    overflow: visible;
   }
 
   .table-scene {
@@ -1243,6 +1252,7 @@ html, body {
   .game-bottom {
     grid-template-columns: 1fr;
     grid-template-rows: auto auto auto;
+    padding-bottom: calc(.65rem + env(safe-area-inset-bottom, 0px));
   }
   .table-3d { transform: rotateX(3deg); }
   .gun-body { width: 120px; height: 70px; }

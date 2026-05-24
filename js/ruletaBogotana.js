@@ -23,14 +23,21 @@ const gameState = {
   online: {
     enabled: false,
     matchId: "",
+    queueId: "",
     mySlot: "player",
     lastUpdatedAt: "",
     pollTimer: null,
-    saving: false
+    saving: false,
+    fetching: false,
+    saveQueued: false,
+    isMatchmaking: false,
+    lastSavedState: ""
   }
 };
 
 let casinoMusic = null;
+const ONLINE_MATCHMAKING_POLL_MS = 1200;
+const ONLINE_GAME_POLL_MS = 900;
 
 // ---------- INIT ----------
 function initRuletaBogotana() {
@@ -110,6 +117,7 @@ function showModeSelect() {
   gameArena.style.display  = 'none';
   endScreen.style.display  = 'none';
   if (typeof CasinoCoins !== 'undefined') CasinoCoins.renderCoinBalance(document);
+  setMatchmaking(false);
   hideScannerOverlay();
 }
 
@@ -173,13 +181,26 @@ function resetPlayerStats(who) {
 }
 
 async function startOnlineMatchmaking() {
+  if (gameState.online.isMatchmaking) return;
+
   if (!Auth.isLoggedIn()) {
     UI.toast('Debes iniciar sesión para jugar contra otro usuario registrado.', 'warning');
     location.hash = '#/login';
     return;
   }
 
-  setMatchmaking(true, 'Buscando rival registrado...', 'Cuando otro usuario toque vs Jugador, la partida empezará automáticamente.');
+  if (typeof CasinoCoins !== 'undefined' && !CasinoCoins.canPlayCasinoGame()) {
+    CasinoCoins.showNoCoinsMessage();
+    return;
+  }
+
+  stopOnlinePolling();
+  gameState.online.isMatchmaking = true;
+  gameState.online.enabled = false;
+  gameState.online.matchId = "";
+  gameState.online.queueId = "";
+  gameState.online.lastUpdatedAt = "";
+  setMatchmaking(true, 'Buscando jugador...', 'Conectando con un rival registrado. Puedes cancelar la busqueda cuando quieras.');
 
   try {
     const result = await Api.apiRuletaJoinMatch(Auth.token());
@@ -190,8 +211,11 @@ async function startOnlineMatchmaking() {
 
     gameState.online.enabled = true;
     gameState.online.matchId = result.matchId || "";
+    gameState.online.queueId = result.queueId || "";
+    setMatchmaking(true, 'Buscando jugador...', 'Aun no hay rival disponible. Seguimos revisando la sala en tiempo real.');
     startWaitingForMatch();
   } catch (error) {
+    gameState.online.isMatchmaking = false;
     setMatchmaking(false);
     UI.toast(error.message, 'error');
   }
@@ -201,29 +225,30 @@ function setMatchmaking(isVisible, title = '', detail = '') {
   const panel = document.getElementById('online-matchmaking');
   if (!panel) return;
   panel.hidden = !isVisible;
+  panel.setAttribute('aria-busy', String(isVisible));
   const titleEl = document.getElementById('matchmaking-title');
   const detailEl = document.getElementById('matchmaking-detail');
   if (titleEl && title) titleEl.textContent = title;
   if (detailEl && detail) detailEl.textContent = detail;
+  document.querySelectorAll('[data-ruleta-action="start"]').forEach(button => {
+    button.disabled = isVisible;
+    button.classList.toggle('is-matchmaking-disabled', isVisible);
+  });
+  if (!isVisible && typeof CasinoCoins !== 'undefined') CasinoCoins.renderCoinBalance(document);
 }
 
 function startWaitingForMatch() {
   stopOnlinePolling();
-  gameState.online.pollTimer = window.setInterval(async () => {
-    try {
-      const result = await Api.apiRuletaJoinMatch(Auth.token());
-      if (result.status === 'matched') loadOnlineMatch(result.match);
-    } catch (error) {
-      stopOnlinePolling();
-      setMatchmaking(false);
-      UI.toast(error.message, 'error');
-    }
-  }, 2500);
+  gameState.online.pollTimer = window.setInterval(pollMatchmakingOnce, ONLINE_MATCHMAKING_POLL_MS);
 }
 
 async function cancelOnlineMatchmaking() {
+  const wasMatchmaking = gameState.online.isMatchmaking;
+  gameState.online.isMatchmaking = false;
+  gameState.online.queueId = "";
   stopOnlinePolling();
   setMatchmaking(false);
+  if (!wasMatchmaking) return;
   try {
     await Api.apiRuletaCancelMatchmaking(Auth.token());
   } catch (error) {
@@ -231,20 +256,51 @@ async function cancelOnlineMatchmaking() {
   }
 }
 
+async function pollMatchmakingOnce() {
+  if (!gameState.online.isMatchmaking || gameState.online.fetching) return;
+  gameState.online.fetching = true;
+  try {
+    const result = await Api.apiRuletaJoinMatch(Auth.token());
+    if (result.status === 'matched') {
+      loadOnlineMatch(result.match);
+      return;
+    }
+    gameState.online.queueId = result.queueId || gameState.online.queueId;
+  } catch (error) {
+    gameState.online.isMatchmaking = false;
+    stopOnlinePolling();
+    setMatchmaking(false);
+    UI.toast(error.message, 'error');
+  } finally {
+    gameState.online.fetching = false;
+  }
+}
+
 function loadOnlineMatch(match) {
   if (!match || !match.state) return;
+  const currentUser = Auth.user();
+  const playerId = match.state.players?.player?.userId || "";
+  const enemyId = match.state.players?.enemy?.userId || "";
+  if (currentUser?.userId && playerId === currentUser.userId && enemyId === currentUser.userId) {
+    cancelOnlineMatchmaking();
+    UI.toast('No se pudo cargar un rival valido. Intenta buscar de nuevo.', 'error');
+    return;
+  }
   if (!payGameCoin()) {
     cancelOnlineMatchmaking();
     return;
   }
   startCasinoMusic();
+  gameState.online.isMatchmaking = false;
   stopOnlinePolling();
   setMatchmaking(false);
   applyOnlineState(match.state);
   gameState.online.enabled = true;
   gameState.online.matchId = match.matchId;
+  gameState.online.queueId = "";
   gameState.online.mySlot = match.mySlot;
   gameState.online.lastUpdatedAt = match.updatedAt || "";
+  gameState.online.lastSavedState = JSON.stringify(serializeOnlineState());
 
   document.getElementById('mode-select').style.display = 'none';
   document.getElementById('game-arena').style.display  = 'flex';
@@ -257,7 +313,8 @@ function loadOnlineMatch(match) {
 function startOnlinePolling() {
   stopOnlinePolling();
   if (!gameState.online.enabled || !gameState.online.matchId) return;
-  gameState.online.pollTimer = window.setInterval(fetchOnlineMatchState, 2200);
+  fetchOnlineMatchState();
+  gameState.online.pollTimer = window.setInterval(fetchOnlineMatchState, ONLINE_GAME_POLL_MS);
 }
 
 function stopOnlinePolling() {
@@ -268,7 +325,8 @@ function stopOnlinePolling() {
 }
 
 async function fetchOnlineMatchState() {
-  if (!gameState.online.enabled || !gameState.online.matchId || gameState.online.saving) return;
+  if (!gameState.online.enabled || !gameState.online.matchId || gameState.online.fetching) return;
+  gameState.online.fetching = true;
   try {
     const result = await Api.apiRuletaGetMatch(Auth.token(), gameState.online.matchId);
     const match = result.match;
@@ -280,21 +338,39 @@ async function fetchOnlineMatchState() {
     if (gameState.gameOver) showOnlineEndIfNeeded();
   } catch (error) {
     UI.toast(error.message, 'error');
+  } finally {
+    gameState.online.fetching = false;
   }
 }
 
 async function saveOnlineState() {
   if (!gameState.online.enabled || !gameState.online.matchId) return;
+  const state = serializeOnlineState();
+  const stateJson = JSON.stringify(state);
+  if (stateJson === gameState.online.lastSavedState) return;
+
+  if (gameState.online.saving) {
+    gameState.online.saveQueued = true;
+    return;
+  }
+
   gameState.online.saving = true;
+  gameState.online.saveQueued = false;
   try {
-    const result = await Api.apiRuletaSaveMatch(Auth.token(), gameState.online.matchId, serializeOnlineState());
+    const result = await Api.apiRuletaSaveMatch(Auth.token(), gameState.online.matchId, state);
     if (result.match) {
       gameState.online.lastUpdatedAt = result.match.updatedAt || gameState.online.lastUpdatedAt;
+      gameState.online.lastSavedState = stateJson;
     }
   } catch (error) {
     UI.toast(error.message, 'error');
   } finally {
     gameState.online.saving = false;
+    if (gameState.online.saveQueued) {
+      saveOnlineState();
+    } else {
+      fetchOnlineMatchState();
+    }
   }
 }
 
@@ -702,7 +778,13 @@ function resetGame() {
   stopOnlinePolling();
   gameState.online.enabled = false;
   gameState.online.matchId = "";
+  gameState.online.queueId = "";
   gameState.online.lastUpdatedAt = "";
+  gameState.online.saving = false;
+  gameState.online.fetching = false;
+  gameState.online.saveQueued = false;
+  gameState.online.isMatchmaking = false;
+  gameState.online.lastSavedState = "";
   gameState.coinStakePaid = false;
   gameState.coinSettled = false;
   gameState.gameOver = false;
@@ -713,6 +795,26 @@ function resetGame() {
   hideRoundIntroOverlay();
   hideScannerOverlay();
   showModeSelect();
+}
+
+function cleanupRuletaRuntime() {
+  const shouldCancelQueue = gameState.online.isMatchmaking;
+  stopCasinoMusic();
+  stopOnlinePolling();
+  window.clearTimeout(gameState.roundIntroTimer);
+  window.clearTimeout(gameState.scannerOverlayTimer);
+  gameState.online.enabled = false;
+  gameState.online.matchId = "";
+  gameState.online.queueId = "";
+  gameState.online.lastUpdatedAt = "";
+  gameState.online.saving = false;
+  gameState.online.fetching = false;
+  gameState.online.saveQueued = false;
+  gameState.online.isMatchmaking = false;
+  gameState.online.lastSavedState = "";
+  if (shouldCancelQueue && Auth.isLoggedIn()) {
+    Api.apiRuletaCancelMatchmaking(Auth.token()).catch(() => {});
+  }
 }
 
 // ---------- RENDER ----------
@@ -922,5 +1024,5 @@ window.resetGame = resetGame;
 window.toggleSound = toggleSound;
 
 window.addEventListener('hashchange', () => {
-  if (location.hash !== '#/ruleta-bogotana') stopCasinoMusic();
+  if (location.hash !== '#/ruleta-bogotana') cleanupRuletaRuntime();
 });

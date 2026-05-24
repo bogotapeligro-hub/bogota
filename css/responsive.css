@@ -24,7 +24,7 @@
   .brand img { width: 38px; height: 38px; }
   .top-actions { gap: 6px; }
   .top-actions .ghost-btn { display: none; }
-  .app-shell { padding: 14px; }
+  .app-shell { padding: 14px 14px calc(88px + env(safe-area-inset-bottom, 0px)); }
   .feed-layout,
   .detail-layout,
   .single-form-layout { display: block; }
@@ -60,6 +60,20 @@
   .modal-actions { display: grid; }
   .user-row { grid-template-columns: 1fr; }
   .floating-post-btn { right: 16px; bottom: 16px; width: 54px; height: 54px; }
+  .busy-overlay,
+  .age-modal-backdrop,
+  .modal-backdrop,
+  .age-lock-screen {
+    align-items: start;
+    place-items: start center;
+    padding: 14px;
+  }
+  .modal-card,
+  .age-card,
+  .busy-card {
+    max-height: calc(100dvh - 28px);
+    overflow-y: auto;
+  }
   .casino-hero,
   .ruleta-start,
   .ruleta-end { padding: 18px; border-radius: 16px; }
