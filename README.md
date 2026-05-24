@@ -66,7 +66,7 @@ README.md
 - Modal obligatorio antes de entrar.
 - Pregunta: “¿Confirmas que tienes 18 años o más?”
 - Botones: “Sí, tengo 18+” y “No soy mayor de edad”.
-- Si responde que no, se muestra pantalla de bloqueo.
+- Si responde que no, se muestra pantalla de bloqueo durante esa visita. Al recargar, vuelve a aparecer el anuncio.
 - La confirmación se guarda en `localStorage` con la clave `bau_age_confirmed_18`.
 - Para resetear en consola:
 

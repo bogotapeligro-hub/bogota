@@ -1,16 +1,21 @@
 const AgeGate = (() => {
+  let deniedThisPage = false;
+
   function isConfirmed() {
     return localStorage.getItem(APP_CONFIG.ageGateKey) === "true";
   }
 
   function confirm() {
+    deniedThisPage = false;
     localStorage.setItem(APP_CONFIG.ageGateKey, "true");
     render();
   }
 
   function deny() {
-    localStorage.setItem(APP_CONFIG.ageGateKey, "false");
+    deniedThisPage = true;
+    localStorage.removeItem(APP_CONFIG.ageGateKey);
     const root = document.getElementById("ageGateRoot");
+    document.body.classList.add("age-gated");
     root.innerHTML = `
       <div class="age-lock-screen">
         <div class="age-card denied">
@@ -32,7 +37,7 @@ const AgeGate = (() => {
       return;
     }
 
-    if (localStorage.getItem(APP_CONFIG.ageGateKey) === "false") {
+    if (deniedThisPage) {
       deny();
       return;
     }
