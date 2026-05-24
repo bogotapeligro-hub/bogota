@@ -6,7 +6,8 @@ const Router = (() => {
     "/create-post": { view: "create-post", auth: true, bind: () => Posts.bindCreatePost() },
     "/casino": { view: "casino", auth: true, bind: () => Casino.bind() },
     "/ruleta-bogotana": { view: "ruleta-bogotana", auth: true, bind: () => RuletaBogotana.init() },
-    "/profile": { view: "profile", auth: true, bind: () => bindProfile() },
+    "/profile": { custom: () => renderProfile(), auth: true },
+    "/chat": { custom: () => Chat.renderGlobal(), auth: true },
     "/rules": { view: "rules" },
     "/admin": { view: "admin", auth: true, moderation: true, bind: () => Admin.initAdminPanel() }
   };
@@ -25,6 +26,8 @@ const Router = (() => {
     UI.syncTopbar();
     const path = currentPath();
     if (path.startsWith("/post/")) return renderPostDetail(decodeURIComponent(path.replace("/post/", "")));
+    if (path.startsWith("/profile/")) return renderProfile(decodeURIComponent(path.replace("/profile/", "")));
+    if (path.startsWith("/chat/")) return Chat.renderPrivate(decodeURIComponent(path.replace("/chat/", "")));
 
     const route = routes[path] || routes["/feed"];
     if (route.auth && !UI.requireSession()) return;
@@ -52,41 +55,99 @@ const Router = (() => {
     `);
     try {
       const data = await Api.apiGetPost(postId);
+      const post = Posts.sanitizePostData(data.post);
       document.querySelector(".feed-column").innerHTML = `
-        <a href="#/feed" class="back-link">Volver al feed</a>
-        ${Posts.card(data.post)}
-        <section class="comments-section">
-          <h2>Comentarios</h2>
-          ${Comments.renderForm(data.post.postId)}
-          <div id="commentsList">${Comments.renderList(data.comments)}</div>
+        <section class="post-detail-panel">
+          <div class="detail-toolbar">
+            <a href="#/feed" class="back-link">Volver al feed</a>
+            <a href="#/feed" class="detail-close" aria-label="Cerrar">X</a>
+          </div>
+          ${Posts.card(post)}
+          <section class="comments-section">
+            <div class="comments-title-row">
+              <h2>Comentarios</h2>
+              <span id="commentCounter">${Number(post.commentCount || 0)} comentarios</span>
+            </div>
+            <div id="commentsList">${Comments.renderList(data.comments)}</div>
+            ${Comments.renderForm(post.postId)}
+          </section>
         </section>
       `;
       Reactions.bind(document);
       Posts.bindReportButtons(document);
       Posts.bindShareButtons(document);
       Posts.bindAdminInline(document);
-      Comments.bindForm();
+      Comments.bindForm({
+        onCreated: () => {
+          const counter = document.getElementById("commentCounter");
+          if (counter) {
+            const current = Number((counter.textContent || "0").match(/\d+/)?.[0] || 0) + 1;
+            counter.textContent = `${current} comentarios`;
+          }
+        }
+      });
       Comments.bindModerationButtons(document);
     } catch (error) {
       document.querySelector(".feed-column").innerHTML = UI.emptyState("Publicacion no encontrada", error.message, `<a class="warning-btn inline-btn" href="#/feed">Volver al feed</a>`);
     }
   }
 
-  function bindProfile() {
-    const user = Auth.user();
+  async function renderProfile(userIdOrUsername = "") {
+    if (!UI.requireSession()) return;
+    const self = Auth.user();
+    const requested = String(userIdOrUsername || self?.userId || "");
+    const html = await UI.loadView("profile");
+    UI.renderApp(html);
     const box = document.getElementById("profileBox");
-    if (!box || !user) return;
+    if (!box || !self) return;
+    box.innerHTML = UI.skeletonPosts(1);
+
+    let profileUser = self;
+    let posts = [];
+    try {
+      const known = typeof Chat !== "undefined"
+        ? Chat.collectKnownUsers().find(user => user.userId === requested || user.username === requested)
+        : null;
+      if (known) profileUser = { ...profileUser, ...known };
+      if (requested && requested !== self.userId && requested !== self.username && Api.apiGetUserProfile && Api.hasConfiguredApiUrl()) {
+        const result = await Api.apiGetUserProfile(Auth.token(), requested);
+        profileUser = result.user || profileUser;
+        posts = result.posts || [];
+      } else {
+        const result = await Api.apiListPosts();
+        posts = (result.posts || []).filter(post => String(post.userId) === String(profileUser.userId) || post.username === profileUser.username);
+      }
+      if (!posts.length) {
+        const result = await Api.apiListPosts();
+        posts = (result.posts || []).filter(post => String(post.userId) === String(profileUser.userId) || post.username === profileUser.username);
+      }
+    } catch {
+      posts = [];
+    }
+
+    const isSelf = String(profileUser.userId) === String(self.userId) || String(profileUser.username) === String(self.username);
+    const chatButton = !isSelf
+      ? `<a class="warning-btn inline-btn" href="#/chat/${encodeURIComponent(profileUser.userId || profileUser.username)}">Chatear</a>`
+      : "";
     box.innerHTML = `
-      <div class="profile-card">
-        <div class="avatar">${UI.escapeHTML(user.username?.slice(0, 2).toUpperCase() || "BA")}</div>
-        <div>
-          <h2>@${UI.escapeHTML(user.username)}</h2>
-          <p>Rol: <strong>${UI.escapeHTML(user.role)}</strong></p>
-          <p>Estado: <strong>${UI.escapeHTML(user.status)}</strong></p>
-          ${Auth.isAdminOrModerator() ? `<a class="warning-btn inline-btn" href="#/admin">${Auth.isAdmin() ? "Abrir panel admin" : "Abrir moderacion"}</a>` : ""}
+      <div class="profile-card expanded-profile">
+        <div class="avatar">${UI.escapeHTML(profileUser.username?.slice(0, 2).toUpperCase() || "BA")}</div>
+        <div class="profile-main">
+          <h2>@${UI.escapeHTML(profileUser.username)}</h2>
+          <p>Rol: <strong>${UI.escapeHTML(profileUser.role || "user")}</strong></p>
+          <p>Estado: <strong>${UI.escapeHTML(profileUser.status || "active")}</strong></p>
+          <div class="profile-actions">
+            ${chatButton}
+            ${isSelf && Auth.isAdminOrModerator() ? `<a class="warning-btn inline-btn" href="#/admin">${Auth.isAdmin() ? "Abrir panel admin" : "Abrir moderacion"}</a>` : ""}
+          </div>
         </div>
       </div>
+      <section class="profile-posts">
+        <h2>Publicaciones</h2>
+        ${posts.length ? posts.map(post => Posts.card(post, true)).join("") : `<p class="muted">No hay publicaciones para mostrar.</p>`}
+      </section>
     `;
+    Feed.bindFeedActions();
   }
 
   function reload() { render(); }

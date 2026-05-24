@@ -108,7 +108,8 @@ const Posts = (() => {
       status: String(post.status || "active"),
       reactionCount: Number(post.reactionCount || 0),
       commentCount: Number(post.commentCount || 0),
-      reportCount: Number(post.reportCount || 0)
+      reportCount: Number(post.reportCount || 0),
+      userId: String(post.userId || post.username || "")
     };
   }
 
@@ -150,6 +151,7 @@ const Posts = (() => {
 
   function card(rawPost, compact = false) {
     const post = sanitizePostData(rawPost);
+    if (typeof Chat !== "undefined") Chat.rememberUser?.(post);
     const tags = parseTags(post.tags);
     const safePostId = UI.escapeHTML(post.postId);
     const isAdminControls = Auth.isAdminOrModerator() ? `
@@ -163,10 +165,10 @@ const Posts = (() => {
     ` : "";
 
     return `
-      <article class="post-card" data-post-id="${safePostId}">
+      <article class="post-card post-card-openable" data-post-id="${safePostId}" data-open-post="${safePostId}" tabindex="0" role="button" aria-label="Abrir publicacion ${UI.escapeHTML(post.title)}">
         <div class="post-head">
           <div>
-            <strong>@${UI.escapeHTML(post.username)}</strong>
+            <a class="user-link" href="#/profile/${encodeURIComponent(post.userId || post.username)}" data-user-link>@${UI.escapeHTML(post.username)}</a>
             <span class="muted">${UI.formatDate(post.createdAt)}</span>
           </div>
           <span class="category-pill ${categoryClass(post.category)}">${UI.escapeHTML(post.category)}</span>

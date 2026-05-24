@@ -16,6 +16,8 @@ const gameState = {
   log: [],
   gameOver: false,
   isRoundIntro: false,
+  actionProcessing: false,
+  statusMessage: '',
   coinStakePaid: false,
   coinSettled: false,
   soundOn: false,
@@ -36,8 +38,8 @@ const gameState = {
 };
 
 let casinoMusic = null;
-const ONLINE_MATCHMAKING_POLL_MS = 1200;
-const ONLINE_GAME_POLL_MS = 900;
+const ONLINE_MATCHMAKING_POLL_MS = 850;
+const ONLINE_GAME_POLL_MS = 500;
 
 // ---------- INIT ----------
 function initRuletaBogotana() {
@@ -138,6 +140,8 @@ function startGame(mode) {
   gameState.roundSize = 4;
   gameState.gameOver  = false;
   gameState.isRoundIntro = false;
+  gameState.actionProcessing = false;
+  gameState.statusMessage = 'Tu turno';
   gameState.coinSettled = false;
   gameState.log = [];
   window.clearTimeout(gameState.roundIntroTimer);
@@ -403,6 +407,8 @@ function applyOnlineState(state) {
   gameState.log = Array.isArray(state.log) ? state.log : [];
   gameState.gameOver = Boolean(state.gameOver);
   gameState.botThinking = false;
+  gameState.actionProcessing = false;
+  gameState.statusMessage = isOnlineMyTurn() ? 'Tu turno' : 'Esperando accion del oponente...';
 }
 
 function hydrateOnlinePlayers(players) {
@@ -497,6 +503,7 @@ function updateChamberCountsAfterShot(charge) {
 
 function showRoundIntroOverlay(round, realCount, fakeCount) {
   gameState.isRoundIntro = true;
+  gameState.statusMessage = `Preparando ronda ${round}...`;
   renderGame();
 
   const overlay = document.getElementById('roundIntroOverlay');
@@ -512,7 +519,7 @@ function showRoundIntroOverlay(round, realCount, fakeCount) {
     gameState.isRoundIntro = false;
     renderGame();
     continueTurnAfterRoundIntro();
-  }, 3000);
+  }, 1600);
 }
 
 function hideRoundIntroOverlay() {
@@ -523,7 +530,7 @@ function hideRoundIntroOverlay() {
 function continueTurnAfterRoundIntro() {
   if (gameState.gameOver) return;
   if (!gameState.isRoundIntro && gameState.mode === 'bot' && gameState.currentTurn === 'enemy') {
-    window.setTimeout(doBotTurn, 800);
+    window.setTimeout(doBotTurn, 350);
   }
   if (gameState.online.enabled) saveOnlineState();
 }
@@ -538,11 +545,14 @@ function checkRoundEnd() {
 
 // ---------- SHOOT ----------
 function shoot(target) {
-  if (gameState.gameOver || gameState.botThinking || gameState.isRoundIntro) return;
+  if (gameState.gameOver || gameState.botThinking || gameState.isRoundIntro || gameState.actionProcessing) return;
   if (gameState.online.enabled && !isOnlineMyTurn()) {
     UI.toast('Espera tu turno.', 'warning');
     return;
   }
+  gameState.actionProcessing = true;
+  gameState.statusMessage = 'Procesando jugada...';
+  renderGame();
   const currentWho  = gameState.currentTurn;
   const currentActor= gameState.players[currentWho];
   const otherWho    = currentWho === 'player' ? 'enemy' : 'player';
@@ -550,6 +560,8 @@ function shoot(target) {
 
   if (gameState.chamber.length === 0) {
     checkRoundEnd();
+    gameState.actionProcessing = false;
+    renderGame();
     return;
   }
 
@@ -573,14 +585,23 @@ function shoot(target) {
       currentActor.doubleDamage = false;
       addLog(`💨 ${currentActor.name} se disparó. Carga FALSA. Conserva el turno.`);
       if (checkRoundEnd()) {
-        if (gameState.online.enabled) saveOnlineState();
+        if (gameState.online.enabled) {
+          saveOnlineState().finally(() => {
+            gameState.actionProcessing = false;
+            renderGame();
+          });
+        } else {
+          gameState.actionProcessing = false;
+        }
         return;
       }
       // Conserva el turno
+      gameState.statusMessage = currentWho === (gameState.online.enabled ? gameState.online.mySlot : 'player') ? 'Tu turno otra vez' : 'Esperando accion del oponente...';
+      gameState.actionProcessing = false;
       renderGame();
       if (gameState.online.enabled) saveOnlineState();
       if (gameState.mode === 'bot' && currentWho === 'enemy') {
-        setTimeout(doBotTurn, 1200);
+        setTimeout(doBotTurn, 500);
       }
       return;
     }
@@ -605,8 +626,19 @@ function shoot(target) {
     }
   }
 
-  if (checkRoundEnd()) return;
-  if (gameState.online.enabled) saveOnlineState();
+  if (checkRoundEnd()) {
+    gameState.actionProcessing = false;
+    return;
+  }
+  if (gameState.online.enabled) {
+    saveOnlineState().finally(() => {
+      gameState.actionProcessing = false;
+      renderGame();
+    });
+  } else {
+    gameState.actionProcessing = false;
+    renderGame();
+  }
 }
 
 function applyDamage(who, amount) {
@@ -625,18 +657,24 @@ function nextTurn() {
     nextAct.skipTurn = false;
     addLog(`⛓ ${nextAct.name} pierde su turno (Esposas del CAI).`);
     gameState.currentTurn = prev; // se queda el mismo
+    gameState.statusMessage = prev === (gameState.online.enabled ? gameState.online.mySlot : 'player') ? 'Tu turno' : 'Esperando accion del oponente...';
     renderGame();
     if (!gameState.isRoundIntro && gameState.mode === 'bot' && gameState.currentTurn === 'enemy') {
-      setTimeout(doBotTurn, 1000);
+      setTimeout(doBotTurn, 450);
     }
     return;
   }
 
   gameState.currentTurn = next;
+  if (gameState.online.enabled) {
+    gameState.statusMessage = next === gameState.online.mySlot ? 'Tu turno' : 'Pasando al turno del oponente...';
+  } else {
+    gameState.statusMessage = next === 'player' ? 'Tu turno' : 'Pasando al turno del oponente...';
+  }
   renderGame();
 
   if (!gameState.isRoundIntro && gameState.mode === 'bot' && gameState.currentTurn === 'enemy') {
-    setTimeout(doBotTurn, 1200);
+    setTimeout(doBotTurn, 500);
   }
 }
 
@@ -644,9 +682,10 @@ function nextTurn() {
 async function doBotTurn() {
   if (gameState.gameOver || gameState.isRoundIntro || gameState.currentTurn !== 'enemy' || gameState.mode !== 'bot') return;
   gameState.botThinking = true;
+  gameState.statusMessage = 'Esperando accion del oponente...';
   renderGame();
 
-  await botThink(800 + Math.random() * 600);
+  await botThink(420 + Math.random() * 260);
 
   const decision = botDecide(gameState);
 
@@ -658,7 +697,7 @@ async function doBotTurn() {
       gameState.botThinking = false;
       nextTurn(); return;
     }
-    await botThink(600);
+    await botThink(280);
     gameState.botThinking = false;
     doBotTurn();
     return;
@@ -674,7 +713,7 @@ async function doBotTurn() {
 
 // ---------- POWER USAGE ----------
 function playerUsePower(powerId) {
-  if (gameState.gameOver || gameState.botThinking || gameState.isRoundIntro) return;
+  if (gameState.gameOver || gameState.botThinking || gameState.isRoundIntro || gameState.actionProcessing) return;
   if (gameState.online.enabled && !isOnlineMyTurn()) {
     UI.toast('Espera tu turno.', 'warning');
     return;
@@ -728,7 +767,7 @@ function checkWinner() {
     gameState.gameOver = true;
     const winner = p.lives > 0 ? p.name : e.name;
     const loser  = p.lives > 0 ? e.name  : p.name;
-    setTimeout(() => showEndScreen(winner, loser), 800);
+    setTimeout(() => showEndScreen(winner, loser), 450);
     return true;
   }
   return false;
@@ -886,6 +925,11 @@ function renderTurnIndicator() {
   const who  = gameState.currentTurn;
   const name = gameState.players[who].name;
   ti.textContent = gameState.botThinking ? `🤖 ${name} pensando...` : `🎯 Turno de ${name}`;
+  const mySlot = gameState.online.enabled ? gameState.online.mySlot : 'player';
+  let statusLabel = gameState.statusMessage || (who === mySlot ? 'Tu turno' : 'Esperando accion del oponente...');
+  if (gameState.botThinking) statusLabel = `${name} pensando...`;
+  if (gameState.gameOver) statusLabel = 'Partida finalizada';
+  ti.textContent = `${statusLabel} · Turno de ${name}`;
   ti.className   = 'turn-indicator turn-' + who;
 }
 
@@ -894,7 +938,7 @@ function renderActionButtons() {
   if (!btns) return;
   const isMyTurn = gameState.online.enabled ? isOnlineMyTurn() : gameState.currentTurn === 'player' ||
     (gameState.mode === 'pvp');
-  const disabled = !isMyTurn || gameState.botThinking || gameState.gameOver || gameState.isRoundIntro;
+  const disabled = !isMyTurn || gameState.botThinking || gameState.gameOver || gameState.isRoundIntro || gameState.actionProcessing;
 
   const currentName = gameState.players[gameState.currentTurn].name;
   const enemyKey    = gameState.currentTurn === 'player' ? 'enemy' : 'player';
@@ -937,14 +981,14 @@ function triggerShootAnim(target, isReal) {
   el.classList.remove('anim-hit', 'anim-miss');
   void el.offsetWidth;
   el.classList.add(isReal ? 'anim-hit' : 'anim-miss');
-  setTimeout(() => el.classList.remove('anim-hit', 'anim-miss'), 800);
+  setTimeout(() => el.classList.remove('anim-hit', 'anim-miss'), 520);
 
   const gun = document.getElementById('gun-3d');
   if (gun) {
     gun.classList.remove('gun-fire');
     void gun.offsetWidth;
     gun.classList.add('gun-fire');
-    setTimeout(() => gun.classList.remove('gun-fire'), 600);
+    setTimeout(() => gun.classList.remove('gun-fire'), 420);
   }
 }
 
@@ -954,7 +998,7 @@ function triggerDamageAnim(who) {
   el.classList.remove('anim-damage');
   void el.offsetWidth;
   el.classList.add('anim-damage');
-  setTimeout(() => el.classList.remove('anim-damage'), 900);
+  setTimeout(() => el.classList.remove('anim-damage'), 560);
 }
 
 // ---------- LOG ----------

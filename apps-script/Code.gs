@@ -16,7 +16,8 @@ const SHEETS = {
   Sessions: ["sessionId", "userId", "tokenHash", "createdAt", "expiresAt", "active"],
   AuditLog: ["logId", "userId", "action", "targetType", "targetId", "details", "createdAt"],
   RuletaQueue: ["queueId", "userId", "username", "status", "matchId", "createdAt", "updatedAt"],
-  RuletaMatches: ["matchId", "status", "player1Id", "player1Username", "player2Id", "player2Username", "stateJson", "createdAt", "updatedAt"]
+  RuletaMatches: ["matchId", "status", "player1Id", "player1Username", "player2Id", "player2Username", "stateJson", "createdAt", "updatedAt"],
+  ChatMessages: ["messageId", "scope", "conversationId", "fromUserId", "fromUsername", "toUserId", "toUsername", "text", "createdAt", "readBy"]
 };
 
 const SESSION_DAYS = 7;
@@ -77,6 +78,12 @@ function doPost(e) {
       case "ruletaGetMatch": data = ruletaGetMatch(payload); break;
       case "ruletaSaveMatch": data = ruletaSaveMatch(payload); break;
       case "ruletaCancelMatchmaking": data = ruletaCancelMatchmaking(payload); break;
+      case "getUserProfile": data = getUserProfile(payload); break;
+      case "listGlobalMessages": data = listGlobalMessages(payload); break;
+      case "createGlobalMessage": data = createGlobalMessage(payload); break;
+      case "listPrivateMessages": data = listPrivateMessages(payload); break;
+      case "createPrivateMessage": data = createPrivateMessage(payload); break;
+      case "markPrivateRead": data = markPrivateRead(payload); break;
       default: throw new Error("Acción no soportada: " + action);
     }
 
@@ -295,6 +302,124 @@ function createComment(payload) {
   incrementCell(postsSheet, postIndex + 2, "Posts", "commentCount", 1);
   audit(user.userId, "createComment", "post", postId, comment.commentId);
   return { comment: comment };
+}
+
+function getUserProfile(payload) {
+  const requester = requireUser(payload.token);
+  const lookup = clean(payload.userIdOrUsername);
+  const users = sheetToObjects(getSheet("Users"));
+  const user = users.find(function(u) {
+    return String(u.userId) === lookup || String(u.username).toLowerCase() === lookup.toLowerCase();
+  });
+  if (!user) throw new Error("Usuario no encontrado.");
+  const posts = sheetToObjects(getSheet("Posts"))
+    .filter(function(post) { return post.status === "active" && post.userId === user.userId; })
+    .sort(function(a, b) { return new Date(b.createdAt) - new Date(a.createdAt); });
+  audit(requester.userId, "getUserProfile", "user", user.userId, "Consulta perfil");
+  return { user: publicUser(user), posts: posts };
+}
+
+function listGlobalMessages(payload) {
+  requireUser(payload.token);
+  setupSheets();
+  const messages = sheetToObjects(getSheet("ChatMessages"))
+    .filter(function(message) { return message.scope === "global"; })
+    .sort(function(a, b) { return new Date(a.createdAt) - new Date(b.createdAt); })
+    .slice(-200);
+  return { messages: messages };
+}
+
+function createGlobalMessage(payload) {
+  const user = requireUser(payload.token);
+  const text = cleanChatText(payload.text);
+  const message = {
+    messageId: makeId("gmsg"),
+    scope: "global",
+    conversationId: "global",
+    fromUserId: user.userId,
+    fromUsername: user.username,
+    toUserId: "",
+    toUsername: "",
+    text: text,
+    createdAt: now(),
+    readBy: user.userId
+  };
+  appendObject(getSheet("ChatMessages"), SHEETS.ChatMessages, message);
+  audit(user.userId, "createGlobalMessage", "chat", message.messageId, "Global");
+  return { message: message };
+}
+
+function listPrivateMessages(payload) {
+  const user = requireUser(payload.token);
+  const peer = findChatPeer(clean(payload.peerUserId));
+  const cid = chatConversationId(user.userId, peer.userId);
+  const messages = sheetToObjects(getSheet("ChatMessages"))
+    .filter(function(message) { return message.scope === "private" && message.conversationId === cid; })
+    .sort(function(a, b) { return new Date(a.createdAt) - new Date(b.createdAt); })
+    .slice(-200);
+  return { peer: publicUser(peer), conversationId: cid, messages: messages };
+}
+
+function createPrivateMessage(payload) {
+  const user = requireUser(payload.token);
+  const peer = findChatPeer(clean(payload.peerUserId));
+  if (peer.userId === user.userId) throw new Error("No puedes chatear contigo mismo.");
+  const text = cleanChatText(payload.text);
+  const cid = chatConversationId(user.userId, peer.userId);
+  const message = {
+    messageId: makeId("pmsg"),
+    scope: "private",
+    conversationId: cid,
+    fromUserId: user.userId,
+    fromUsername: user.username,
+    toUserId: peer.userId,
+    toUsername: peer.username,
+    text: text,
+    createdAt: now(),
+    readBy: user.userId
+  };
+  appendObject(getSheet("ChatMessages"), SHEETS.ChatMessages, message);
+  audit(user.userId, "createPrivateMessage", "chat", cid, "Privado a " + peer.userId);
+  return { message: message, conversationId: cid };
+}
+
+function markPrivateRead(payload) {
+  const user = requireUser(payload.token);
+  const peer = findChatPeer(clean(payload.peerUserId));
+  const cid = chatConversationId(user.userId, peer.userId);
+  const sheet = getSheet("ChatMessages");
+  const messages = sheetToObjects(sheet);
+  messages.forEach(function(message, idx) {
+    if (message.scope === "private" && message.conversationId === cid && message.toUserId === user.userId) {
+      const readBy = String(message.readBy || "").split(",").filter(Boolean);
+      if (readBy.indexOf(user.userId) === -1) {
+        readBy.push(user.userId);
+        sheet.getRange(idx + 2, SHEETS.ChatMessages.indexOf("readBy") + 1).setValue(readBy.join(","));
+      }
+    }
+  });
+  return { ok: true };
+}
+
+function findChatPeer(lookup) {
+  const users = sheetToObjects(getSheet("Users"));
+  const peer = users.find(function(u) {
+    return String(u.userId) === lookup || String(u.username).toLowerCase() === lookup.toLowerCase();
+  });
+  if (!peer || normalizeUserStatus(peer.status || "active") !== "active") throw new Error("Usuario destino no encontrado.");
+  return peer;
+}
+
+function chatConversationId(a, b) {
+  return [String(a), String(b)].sort().join("__");
+}
+
+function cleanChatText(value) {
+  const text = clean(value).replace(/\s+/g, " ").trim().slice(0, 700);
+  if (!text) throw new Error("No puedes enviar mensajes vacios.");
+  const moderation = validateServerContent(text, true);
+  if (!moderation.allowed) throw new Error(moderation.message);
+  return text;
 }
 
 function react(payload) {

@@ -3,6 +3,7 @@ const Feed = (() => {
     const items = [
       ["Inicio", "#/feed"],
       ["Publicar", "#/create-post"],
+      ["Chat", "#/chat"],
       ["¿Quieres jugar?", "#/casino"],
       ["Tendencias", "#/feed?tag=tendencias"],
       ["Manifestaciones", "#/feed?cat=Manifestacion"],
@@ -18,7 +19,7 @@ const Feed = (() => {
     return `
       <aside class="left-sidebar">
         <div class="sidebar-card">
-          ${items.map(([label, href]) => `<a href="${href}" class="side-link ${label === active ? "active" : ""}">${UI.escapeHTML(label)}</a>`).join("")}
+          ${items.map(([label, href]) => `<a href="${href}" class="side-link ${label === active ? "active" : ""}">${UI.escapeHTML(label)}${label === "Chat" ? ` <span class="chat-badge hidden" data-chat-badge>0</span>` : ""}</a>`).join("")}
         </div>
         <div class="sidebar-card caution-card">
           <strong>Regla critica</strong>
@@ -113,9 +114,22 @@ const Feed = (() => {
     Posts.bindShareButtons(document);
     Posts.bindAdminInline(document);
     Comments.bindModerationButtons(document);
+    document.querySelectorAll("[data-open-post]").forEach((card) => {
+      card.addEventListener("click", (event) => {
+        if (event.target.closest("a, button, input, textarea, select, video")) return;
+        location.hash = `#/post/${card.dataset.openPost}`;
+      });
+      card.addEventListener("keydown", (event) => {
+        if ((event.key === "Enter" || event.key === " ") && !event.target.closest("a, button, input, textarea, select")) {
+          event.preventDefault();
+          location.hash = `#/post/${card.dataset.openPost}`;
+        }
+      });
+    });
     document.querySelectorAll("[data-comment-open]").forEach((button) => {
       button.addEventListener("click", () => location.hash = `#/post/${button.dataset.commentOpen}`);
     });
+    if (typeof Chat !== "undefined") Chat.updateBadges?.();
   }
 
   return { render, sidebar, rightbar, bindFeedActions };

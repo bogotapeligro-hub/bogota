@@ -133,6 +133,7 @@ const UI = (() => {
 
   function bindGlobalNavigation() {
     document.getElementById("rulesShortcut")?.addEventListener("click", () => location.hash = "#/rules");
+    document.getElementById("chatShortcut")?.addEventListener("click", () => location.hash = "#/chat");
     document.getElementById("casinoShortcut")?.addEventListener("click", () => location.hash = "#/casino");
     document.getElementById("adminShortcut")?.addEventListener("click", () => location.hash = "#/admin");
     document.getElementById("publishShortcut")?.addEventListener("click", () => location.hash = "#/create-post");
@@ -154,6 +155,7 @@ const UI = (() => {
       roleBadge.classList.toggle("hidden", !canModerate);
       roleBadge.textContent = canModerate ? Auth.roleLabel() : "";
     }
+    if (typeof Chat !== "undefined") Chat.updateBadges?.();
   }
 
   function requireSession() {

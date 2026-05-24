@@ -166,6 +166,30 @@ const Api = (() => {
     return apiRequest("ruletaCancelMatchmaking", { token });
   }
 
+  function apiGetUserProfile(token, userIdOrUsername) {
+    return apiRequest("getUserProfile", { token, userIdOrUsername });
+  }
+
+  function apiListGlobalMessages(token) {
+    return apiRequest("listGlobalMessages", { token });
+  }
+
+  function apiCreateGlobalMessage(token, text) {
+    return apiRequest("createGlobalMessage", { token, text });
+  }
+
+  function apiListPrivateMessages(token, peerUserId) {
+    return apiRequest("listPrivateMessages", { token, peerUserId });
+  }
+
+  function apiCreatePrivateMessage(token, peerUserId, text) {
+    return apiRequest("createPrivateMessage", { token, peerUserId, text });
+  }
+
+  function apiMarkPrivateRead(token, peerUserId) {
+    return apiRequest("markPrivateRead", { token, peerUserId });
+  }
+
   return {
     apiRegister,
     apiLogin,
@@ -198,6 +222,12 @@ const Api = (() => {
     apiRuletaGetMatch,
     apiRuletaSaveMatch,
     apiRuletaCancelMatchmaking,
+    apiGetUserProfile,
+    apiListGlobalMessages,
+    apiCreateGlobalMessage,
+    apiListPrivateMessages,
+    apiCreatePrivateMessage,
+    apiMarkPrivateRead,
     hasConfiguredApiUrl
   };
 })();

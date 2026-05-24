@@ -4,6 +4,7 @@ const Comments = (() => {
       return `<div class="comment-empty">Aún no hay comentarios. Sé preciso, no acuses sin evidencia y no publiques datos personales.</div>`;
     }
     return comments.map((comment) => {
+      if (typeof Chat !== "undefined") Chat.rememberUser?.(comment);
       const modControls = Auth.isAdminOrModerator() ? `
         <button class="mini-btn" data-admin-comment-status="hidden" data-comment-id="${UI.escapeHTML(comment.commentId)}" type="button">Ocultar</button>
         <button class="mini-btn danger" data-admin-comment-remove="${UI.escapeHTML(comment.commentId)}" type="button">Remover</button>
@@ -11,7 +12,7 @@ const Comments = (() => {
       return `
       <article class="comment-card" data-comment-id="${UI.escapeHTML(comment.commentId)}">
         <div class="comment-head">
-          <strong>@${UI.escapeHTML(comment.username)}</strong>
+          <a class="user-link" href="#/profile/${encodeURIComponent(comment.userId || comment.username)}">@${UI.escapeHTML(comment.username)}</a>
           <span class="muted">${UI.formatDate(comment.createdAt)}</span>
         </div>
         <p>${UI.escapeHTML(comment.text)}</p>
@@ -34,9 +35,11 @@ const Comments = (() => {
     `;
   }
 
-  function bindForm() {
+  function bindForm(options = {}) {
     const form = document.getElementById("commentForm");
     if (!form) return;
+    if (form.dataset.bound === "true") return;
+    form.dataset.bound = "true";
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
       if (!UI.requireSession()) return;
@@ -46,18 +49,40 @@ const Comments = (() => {
 
       const button = form.querySelector("button[type='submit']");
       try {
-        UI.showBusy("Estamos cargando tu comentario, espera...");
         UI.setLoading(button, true, "Comentando...");
-        await Api.apiCreateComment(Auth.token(), form.dataset.postId, text);
+        const result = await Api.apiCreateComment(Auth.token(), form.dataset.postId, text);
+        const comment = result.comment || {
+          commentId: `local_${Date.now()}`,
+          postId: form.dataset.postId,
+          userId: Auth.user()?.userId || "",
+          username: Auth.user()?.username || "usuario",
+          text,
+          createdAt: new Date().toISOString(),
+          status: "active",
+          reportCount: 0
+        };
+        appendComment(comment);
+        form.reset();
+        options.onCreated?.(comment);
         UI.toast("Comentario publicado.", "success");
-        Router.reload();
       } catch (error) {
         UI.toast(error.message, "error");
       } finally {
         UI.setLoading(button, false);
-        UI.hideBusy();
       }
     });
+  }
+
+  function appendComment(comment) {
+    const list = document.getElementById("commentsList");
+    if (!list || !comment?.commentId) return;
+    if (list.querySelector(`[data-comment-id="${CSS.escape(String(comment.commentId))}"]`)) return;
+    if (list.querySelector(".comment-empty")) list.innerHTML = "";
+    list.insertAdjacentHTML("beforeend", renderList([comment]));
+    Reactions.bind(list);
+    Posts.bindReportButtons(list);
+    bindModerationButtons(list);
+    list.scrollIntoView({ block: "end", behavior: "smooth" });
   }
 
   function bindModerationButtons(root = document) {
@@ -85,5 +110,5 @@ const Comments = (() => {
     });
   }
 
-  return { renderList, renderForm, bindForm, bindModerationButtons };
+  return { renderList, renderForm, bindForm, appendComment, bindModerationButtons };
 })();

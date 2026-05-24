@@ -28,7 +28,8 @@
   .app-shell { padding: 14px 14px calc(88px + env(safe-area-inset-bottom, 0px)); }
   .feed-layout,
   .detail-layout,
-  .single-form-layout { display: block; }
+  .single-form-layout,
+  .chat-layout { display: block; }
   .left-sidebar {
     position: fixed;
     top: var(--topbar-height);
@@ -51,6 +52,31 @@
   .admin-hero,
   .admin-panel { border-radius: 18px; padding: 18px; }
   .post-actions { display: block; }
+  .post-detail-panel {
+    min-height: calc(100dvh - var(--topbar-height) - 28px);
+  }
+  .comments-section {
+    padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  }
+  .chat-panel {
+    min-height: calc(100dvh - var(--topbar-height) - 28px);
+    border-radius: 18px;
+    grid-template-rows: auto minmax(260px, 1fr) auto;
+  }
+  .chat-header {
+    padding: 14px;
+  }
+  .chat-messages {
+    padding: 14px;
+  }
+  .chat-compose {
+    position: sticky;
+    bottom: 0;
+    grid-template-columns: 1fr;
+  }
+  .chat-bubble {
+    max-width: 82%;
+  }
   .reaction-group { margin-bottom: 8px; }
   .action-btn { margin: 4px 4px 4px 0; }
   .form-grid,
