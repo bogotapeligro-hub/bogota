@@ -1,0 +1,96 @@
+@media (max-width: 1120px) {
+  .feed-layout,
+  .detail-layout { grid-template-columns: 220px minmax(0, 1fr); }
+  .right-sidebar { display: none; }
+  .single-form-layout { grid-template-columns: 220px minmax(0, 1fr); }
+  .admin-columns { grid-template-columns: 1fr; }
+  .casino-grid { grid-template-columns: 1fr; }
+  .ruleta-shell {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "round"
+      "table"
+      "actions"
+      "log";
+  }
+  .ruleta-log { max-height: 260px; }
+}
+
+@media (max-width: 760px) {
+  :root { --topbar-height: 66px; }
+  .mobile-only { display: inline-flex; }
+  .topbar { padding: 0 12px; }
+  .brand span { font-size: 0.95rem; }
+  .brand img { width: 38px; height: 38px; }
+  .top-actions { gap: 6px; }
+  .top-actions .ghost-btn { display: none; }
+  .app-shell { padding: 14px; }
+  .feed-layout,
+  .detail-layout,
+  .single-form-layout { display: block; }
+  .left-sidebar {
+    position: fixed;
+    top: var(--topbar-height);
+    left: 0;
+    bottom: 0;
+    width: min(82vw, 320px);
+    padding: 14px;
+    background: rgba(8,9,13,0.96);
+    backdrop-filter: blur(14px);
+    transform: translateX(-105%);
+    transition: transform 0.22s ease;
+    z-index: 36;
+    overflow-y: auto;
+  }
+  body.sidebar-open .left-sidebar { transform: translateX(0); }
+  .feed-hero,
+  .post-card,
+  .form-card,
+  .rules-card,
+  .admin-hero,
+  .admin-panel { border-radius: 18px; padding: 18px; }
+  .post-actions { display: block; }
+  .reaction-group { margin-bottom: 8px; }
+  .action-btn { margin: 4px 4px 4px 0; }
+  .form-grid,
+  .rule-grid { grid-template-columns: 1fr; }
+  .age-card,
+  .modal-card { padding: 22px; }
+  .age-actions,
+  .modal-actions { display: grid; }
+  .user-row { grid-template-columns: 1fr; }
+  .floating-post-btn { right: 16px; bottom: 16px; width: 54px; height: 54px; }
+  .casino-hero,
+  .ruleta-start,
+  .ruleta-end { padding: 18px; border-radius: 16px; }
+  .casino-game-card { min-height: 220px; }
+  .ruleta-topline,
+  .mode-grid,
+  .action-buttons,
+  .power-grid { display: grid; }
+  .table-scene { min-height: 480px; }
+  .table-3d { min-height: 230px; border-radius: 18px; }
+  .duel-device { height: 60px; }
+  .power-card { width: 100%; }
+}
+
+@media (max-width: 430px) {
+  .brand span { display: none; }
+  .warning-btn,
+  .ghost-btn,
+  .icon-btn { padding: 9px 11px; }
+  .feed-hero h1 { font-size: 2.5rem; }
+  .post-title { font-size: 1.45rem; }
+  .reaction-group {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .reaction-btn {
+    width: 100%;
+    min-width: 0;
+    justify-content: center;
+    padding: 9px 8px;
+  }
+  .reaction-label { font-size: 0.78rem; }
+  .comment-actions .reaction-group { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

@@ -1,0 +1,47 @@
+<div class="feed-layout single-form-layout">
+  <aside class="left-sidebar">
+    <div class="sidebar-card">
+      <a class="side-link" href="#/feed">Inicio</a>
+      <a class="side-link active" href="#/create-post">Publicar</a>
+      <a class="side-link" href="#/rules">Reglas</a>
+    </div>
+  </aside>
+  <section class="form-card">
+    <span class="badge-alert">Nueva alerta</span>
+    <h1>Crear publicación</h1>
+    <p class="muted">Publica información urbana de interés público. No publiques datos personales, acusaciones sin evidencia ni contenido prohibido.</p>
+    <form id="createPostForm" class="post-form">
+      <label>Título</label>
+      <input name="title" maxlength="120" placeholder="Ej: Bloqueo en la Av. Caracas" required />
+      <label>Descripción</label>
+      <textarea name="description" rows="6" maxlength="1200" placeholder="Describe qué ocurre, dónde y qué tan reciente es. Evita nombres, cédulas, teléfonos o direcciones exactas." required></textarea>
+      <div class="form-grid">
+        <div>
+          <label>Categoría</label>
+          <select name="category" required></select>
+        </div>
+        <div>
+          <label>Localidad o zona</label>
+          <select name="location" required></select>
+        </div>
+      </div>
+      <div class="media-upload-box">
+        <label>Multimedia opcional</label>
+        <input id="mediaFileInput" name="mediaFile" type="file" accept="image/*,video/*" hidden />
+        <div class="media-upload-actions">
+          <button class="ghost-btn" type="button" data-pick-media="image">Subir foto</button>
+          <button class="ghost-btn" type="button" data-pick-media="video">Subir video</button>
+          <button class="mini-btn danger hidden" type="button" id="clearMediaBtn">Quitar</button>
+        </div>
+        <div id="mediaUploadPreview" class="media-upload-preview">Sin contenido multimedia</div>
+      </div>
+      <label>Etiquetas</label>
+      <input name="tags" placeholder="movilidad, centro, emergencia" />
+      <label class="check-row critical-check">
+        <input name="contentSafety" type="checkbox" />
+        <span>Confirmo que este contenido no muestra violencia contra menores, contenido sexual de menores, datos personales privados ni incita a cometer delitos.</span>
+      </label>
+      <button class="warning-btn full" type="submit">Publicar alerta</button>
+    </form>
+  </section>
+</div>

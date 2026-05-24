@@ -1,0 +1,102 @@
+<section id="casino-main" class="casino-main">
+  <header class="casino-header">
+    <div class="casino-header-inner">
+      <div class="casino-brand">
+        <span class="brand-icon">🎰</span>
+        <div>
+          <h1 class="brand-title">Casino Callejero Bogotá</h1>
+          <p class="brand-sub">Juegos urbanos ficticios · solo entretenimiento</p>
+        </div>
+      </div>
+      <div class="casino-user-info">
+        <div class="casino-coins" data-casino-coins>
+          <img src="assets/casino.png" alt="Moneda de casino" class="casino-coin-icon">
+          <span>x <strong data-casino-coin-amount>5</strong></span>
+          <small class="coin-timer" data-casino-coin-timer>Monedas listas</small>
+        </div>
+        <span id="casino-username" class="username-badge">Jugador</span>
+        <a href="#/feed" class="exit-btn">← Volver al inicio</a>
+      </div>
+    </div>
+  </header>
+
+  <div class="legal-banner">
+    ⚠ Este modo es solo entretenimiento. No usa dinero real, apuestas reales, criptomonedas ni premios económicos.
+  </div>
+
+  <main class="casino-games-section">
+    <h2 class="section-title">Elige tu juego</h2>
+    <p class="section-sub">Mesa abierta · sin apuestas reales · mayores de 18 años</p>
+
+    <div class="games-grid">
+      <article class="game-card game-active" id="card-ruleta">
+        <div class="game-card-glow"></div>
+        <div class="game-card-top">
+          <div class="game-number">01</div>
+          <div class="game-badge game-badge-live">EN VIVO</div>
+        </div>
+        <div class="game-icon-wrap">
+          <div class="game-icon-3d" id="icon-ruleta">
+            <div class="dice-face">🎯</div>
+          </div>
+        </div>
+        <h3 class="game-name">RuletaBogotana</h3>
+        <p class="game-desc">Duelo de mesa ficticio por turnos. Cargas reales y falsas, poderes urbanos y tensión de neón.</p>
+        <div class="game-tags">
+          <span class="tag">2 jugadores</span>
+          <span class="tag">Turnos</span>
+          <span class="tag">Poderes</span>
+        </div>
+        <a href="#/ruleta-bogotana" class="game-btn game-btn-play" data-casino-play-button>
+          <span>Jugar ahora</span>
+          <span class="btn-arrow">→</span>
+        </a>
+      </article>
+
+      <article class="game-card game-locked" id="card-dados">
+        <div class="game-card-top">
+          <div class="game-number">02</div>
+          <div class="game-badge game-badge-soon">PRÓXIMAMENTE</div>
+        </div>
+        <div class="game-icon-wrap">
+          <div class="game-icon-3d locked-icon">
+            <div class="dice-face">🎲</div>
+          </div>
+        </div>
+        <h3 class="game-name">Dados de la Calle</h3>
+        <p class="game-desc">Lanza dados ficticios en una mesa urbana. Diseño listo, lógica próximamente.</p>
+        <div class="game-tags">
+          <span class="tag tag-dim">Dados</span>
+          <span class="tag tag-dim">Azar</span>
+          <span class="tag tag-dim">Ficticio</span>
+        </div>
+        <button class="game-btn game-btn-locked" disabled>🔒 No disponible aún</button>
+      </article>
+
+      <article class="game-card game-locked" id="card-cartas">
+        <div class="game-card-top">
+          <div class="game-number">03</div>
+          <div class="game-badge game-badge-soon">PRÓXIMAMENTE</div>
+        </div>
+        <div class="game-icon-wrap">
+          <div class="game-icon-3d locked-icon">
+            <div class="dice-face">🃏</div>
+          </div>
+        </div>
+        <h3 class="game-name">Cartas del Distrito</h3>
+        <p class="game-desc">Un mazo ficticio con identidad bogotana. Estrategia, bluff y calle, sin apuestas reales.</p>
+        <div class="game-tags">
+          <span class="tag tag-dim">Cartas</span>
+          <span class="tag tag-dim">Estrategia</span>
+          <span class="tag tag-dim">Bluff</span>
+        </div>
+        <button class="game-btn game-btn-locked" disabled>🔒 No disponible aún</button>
+      </article>
+    </div>
+  </main>
+
+  <footer class="casino-footer">
+    <p>Casino Callejero Bogotá · solo entretenimiento · prohibido para menores de 18 años</p>
+    <p class="footer-small">No hay dinero real, apuestas reales, criptomonedas ni premios económicos de ningún tipo.</p>
+  </footer>
+</section>

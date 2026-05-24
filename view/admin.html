@@ -1,0 +1,60 @@
+<div class="admin-dashboard">
+  <section class="admin-hero">
+    <span class="badge-alert" id="adminModeLabel">Panel de moderacion</span>
+    <h1>Control urbano</h1>
+    <p>Gestiona reportes, contenido oculto o removido y usuarios segun tu rol.</p>
+  </section>
+
+  <section class="admin-stats-grid" id="adminStats"></section>
+
+  <section class="admin-section">
+    <div class="admin-section-head">
+      <div>
+        <span class="admin-kicker">Contenido</span>
+        <h2>Publicaciones reportadas</h2>
+      </div>
+      <button class="ghost-btn" data-admin-refresh>Actualizar</button>
+    </div>
+    <div id="reportedPosts" class="admin-list"></div>
+  </section>
+
+  <section class="admin-section">
+    <div class="admin-section-head">
+      <div>
+        <span class="admin-kicker">Comentarios</span>
+        <h2>Comentarios reportados</h2>
+      </div>
+    </div>
+    <div id="reportedComments" class="admin-list"></div>
+  </section>
+
+  <section class="admin-section">
+    <div class="admin-section-head">
+      <div>
+        <span class="admin-kicker">Reportes</span>
+        <h2>Reportes recibidos</h2>
+      </div>
+    </div>
+    <div id="reportsList" class="admin-list"></div>
+  </section>
+
+  <section class="admin-section admin-only hidden" id="usersSection">
+    <div class="admin-section-head">
+      <div>
+        <span class="admin-kicker">Admin</span>
+        <h2>Usuarios</h2>
+      </div>
+    </div>
+    <div id="usersList" class="admin-list"></div>
+  </section>
+
+  <section class="admin-section admin-only hidden" id="auditSection">
+    <div class="admin-section-head">
+      <div>
+        <span class="admin-kicker">Auditoria</span>
+        <h2>Registro de acciones</h2>
+      </div>
+    </div>
+    <div id="auditLog" class="admin-list"></div>
+  </section>
+</div>

@@ -1,0 +1,209 @@
+<section id="ruletaRoot" class="ruleta-root">
+  <div id="mode-select" class="mode-select">
+    <div class="mode-box">
+      <div class="mode-header">
+        <a href="#/casino" class="back-link">← Volver</a>
+        <div class="casino-coins ruleta-coins" data-casino-coins>
+          <img src="assets/casino.png" alt="Moneda de casino" class="casino-coin-icon">
+          <span>x <strong data-casino-coin-amount>5</strong></span>
+          <small class="coin-timer" data-casino-coin-timer>Monedas listas</small>
+        </div>
+        <button id="sound-toggle" class="sound-btn" type="button" data-ruleta-action="sound">🔇 Sonido: OFF</button>
+      </div>
+
+      <div class="mode-logo">
+        <div class="mode-gun">🎯</div>
+        <h1 class="mode-title">Ruleta<br><span>Bogotana</span></h1>
+        <p class="mode-sub">Duelo ficticio de mesa · por turnos · sin dinero real</p>
+      </div>
+
+      <div class="mode-rules">
+        <div class="rule-item"><span class="rule-icon">♥</span> 5 vidas por jugador</div>
+        <div class="rule-item"><span class="rule-icon">●</span> Cargas reales y falsas mezcladas</div>
+        <div class="rule-item"><span class="rule-icon">⚡</span> Poderes urbanos disponibles</div>
+        <div class="rule-item"><span class="rule-icon">↻</span> Turnos alternados</div>
+      </div>
+
+      <h2 class="choose-mode">Elige modo de juego</h2>
+      <div class="mode-buttons">
+        <button class="mode-btn mode-btn-bot" type="button" data-ruleta-action="start" data-start-mode="bot">
+          <span class="mode-btn-icon">🤖</span>
+          <span class="mode-btn-label">vs Bot</span>
+          <span class="mode-btn-desc">Jugador contra IA</span>
+        </button>
+        <button class="mode-btn mode-btn-pvp" type="button" data-ruleta-action="start" data-start-mode="pvp">
+          <span class="mode-btn-icon">👥</span>
+          <span class="mode-btn-label">vs Jugador</span>
+          <span class="mode-btn-desc">Busca otro usuario registrado</span>
+        </button>
+      </div>
+
+      <div id="online-matchmaking" class="matchmaking-panel" hidden>
+        <div class="match-spinner"></div>
+        <strong id="matchmaking-title">Buscando rival registrado...</strong>
+        <p id="matchmaking-detail">Cuando otro usuario toque vs Jugador, la partida empezará automáticamente.</p>
+        <button id="cancelMatchmakingBtn" class="match-cancel-btn" type="button" data-ruleta-action="cancel-match">Cancelar búsqueda</button>
+      </div>
+
+      <p class="mode-disclaimer">
+        ⚠ Juego ficticio de entretenimiento. No usa dinero real, armas reales, sangre ni gore.
+        Solo para mayores de 18 años.
+      </p>
+    </div>
+  </div>
+
+  <div id="game-arena" class="game-arena" style="display:none;">
+    <div id="roundIntroOverlay" class="round-intro-overlay hidden">
+      <div class="round-intro-card">
+        <div class="skull-icon">☠️</div>
+        <h2 id="roundIntroTitle">Ronda 1</h2>
+        <p id="roundIntroText">Se metieron 2 reales y 2 falsas.</p>
+        <p class="luck-text">Buena suerte.</p>
+      </div>
+    </div>
+
+    <div id="scannerOverlay" class="scanner-overlay hidden">
+      <div class="scanner-card">
+        <div class="scanner-icon">🔍</div>
+        <h2>Ojo de Halcon</h2>
+        <p id="scannerResultText">La proxima carga parece: REAL</p>
+        <small>Esta pista aparece solo porque usaste la lupa.</small>
+      </div>
+    </div>
+
+    <div class="game-topbar">
+      <a href="#/casino" class="back-link">← Casino</a>
+      <div id="round-info" class="round-info"></div>
+      <div class="casino-coins ruleta-coins" data-casino-coins>
+        <img src="assets/casino.png" alt="Moneda de casino" class="casino-coin-icon">
+        <span>x <strong data-casino-coin-amount>5</strong></span>
+        <small class="coin-timer" data-casino-coin-timer>Monedas listas</small>
+      </div>
+      <button id="sound-toggle2" class="sound-btn" type="button" data-ruleta-action="sound">🔇 Sonido: OFF</button>
+    </div>
+
+    <div id="turn-indicator" class="turn-indicator">🎯 Turno del Jugador</div>
+
+    <div class="table-scene">
+      <div id="table-3d" class="table-3d">
+        <div class="table-bg-deco">
+          <div class="graffiti g1">BCG</div>
+          <div class="graffiti g2">★</div>
+          <div class="graffiti g3">CALLE</div>
+          <div class="graffiti g4">7MA</div>
+        </div>
+
+        <div id="zone-enemy" class="player-zone zone-enemy">
+          <div class="player-label" id="label-enemy">BOT</div>
+          <div class="player-avatar avatar-enemy">
+            <div class="avatar-ring"></div>
+            <div class="character-3d character-bot" aria-hidden="true">
+              <div class="character-shadow"></div>
+              <div class="character-body">
+                <div class="character-head">
+                  <span class="character-face">🤖</span>
+                </div>
+                <div class="character-torso"></div>
+                <div class="character-arm arm-left"></div>
+                <div class="character-arm arm-right"></div>
+                <div class="character-leg leg-left"></div>
+                <div class="character-leg leg-right"></div>
+              </div>
+            </div>
+          </div>
+          <div class="lives-row" id="lives-enemy"></div>
+          <div class="status-badges" id="status-enemy"></div>
+        </div>
+
+        <div class="table-center">
+          <div class="center-surface">
+            <div class="neon-ring"></div>
+            <div id="gun-3d" class="gun-object">
+              <div class="gun-body">
+                <div class="gun-barrel"></div>
+                <div class="gun-grip"></div>
+                <div class="gun-cylinder">
+                  <div class="cyl-slot s1"></div>
+                  <div class="cyl-slot s2"></div>
+                  <div class="cyl-slot s3"></div>
+                  <div class="cyl-slot s4"></div>
+                  <div class="cyl-slot s5"></div>
+                  <div class="cyl-slot s6"></div>
+                </div>
+              </div>
+              <div class="gun-label">DISPOSITIVO DE DUELO FICTICIO</div>
+            </div>
+          </div>
+          <div class="table-divider">
+            <div class="divider-line"></div>
+            <div class="divider-gem">⬟</div>
+            <div class="divider-line"></div>
+          </div>
+        </div>
+
+        <div id="zone-player" class="player-zone zone-player">
+          <div class="status-badges" id="status-player"></div>
+          <div class="lives-row" id="lives-player"></div>
+          <div class="player-avatar avatar-player">
+            <div class="avatar-ring"></div>
+            <div class="character-3d character-player" aria-hidden="true">
+              <div class="character-shadow"></div>
+              <div class="character-body">
+                <div class="character-head">
+                  <span class="character-face">🧑</span>
+                </div>
+                <div class="character-torso"></div>
+                <div class="character-arm arm-left"></div>
+                <div class="character-arm arm-right"></div>
+                <div class="character-leg leg-left"></div>
+                <div class="character-leg leg-right"></div>
+              </div>
+            </div>
+          </div>
+          <div class="player-label" id="label-player">JUGADOR</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="game-bottom">
+      <div class="actions-panel">
+        <div class="actions-title">ACCIONES</div>
+        <div id="action-buttons" class="action-buttons"></div>
+      </div>
+
+      <div class="powers-panel">
+        <div class="powers-title">⚡ PODERES DISPONIBLES</div>
+        <div id="powers-container" class="powers-container"></div>
+      </div>
+
+      <div class="log-panel">
+        <div class="log-title">LOG</div>
+        <div id="game-log" class="game-log"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="end-screen" class="end-screen" style="display:none;">
+    <div class="end-box">
+      <div class="casino-coins ruleta-coins end-coins" data-casino-coins>
+        <img src="assets/casino.png" alt="Moneda de casino" class="casino-coin-icon">
+        <span>x <strong data-casino-coin-amount>5</strong></span>
+        <small class="coin-timer" data-casino-coin-timer>Monedas listas</small>
+      </div>
+      <div class="end-trophy">🏆</div>
+      <h2 class="end-title">Ganó <span id="end-winner"></span></h2>
+      <p class="end-loser"><span id="end-loser"></span> perdió la partida</p>
+      <div class="end-stats">
+        <div class="end-stat"><span class="es-label">Rondas jugadas</span><span class="es-val" id="end-rounds">-</span></div>
+      </div>
+      <div class="end-log-wrap">
+        <p class="end-log-title">Últimas jugadas:</p>
+        <ul id="end-log" class="end-log"></ul>
+      </div>
+      <div class="end-actions">
+        <button class="end-btn end-btn-play" type="button" id="resetGameBtn" data-ruleta-action="reset">↻ Jugar otra vez</button>
+        <a href="#/casino" class="end-btn end-btn-back">← Volver al casino</a>
+      </div>
+    </div>
+  </div>
+</section>

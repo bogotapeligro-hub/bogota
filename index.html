@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bogotá Alerta Urbana</title>
+  <meta name="description" content="Red social urbana para reportes ciudadanos de Bogotá: movilidad, emergencias, manifestaciones y situaciones de interés público." />
+  <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/auth.css" />
+  <link rel="stylesheet" href="css/feed.css" />
+  <link rel="stylesheet" href="css/admin.css" />
+  <link rel="stylesheet" href="css/casino.css" />
+  <link rel="stylesheet" href="css/ruletaBogotana.css" />
+  <link rel="stylesheet" href="css/responsive.css" />
+</head>
+<body>
+  <div id="ageGateRoot"></div>
+
+  <header class="topbar" id="topbar">
+    <button class="icon-btn mobile-only" id="menuToggle" aria-label="Abrir menú">☰</button>
+    <a class="brand" href="#/feed" aria-label="Bogotá Alerta Urbana">
+      <img src="assets/logo.svg" alt="Logo Bogotá Alerta Urbana" />
+      <span>Bogotá <strong>Alerta Urbana</strong></span>
+    </a>
+    <nav class="top-actions">
+      <button class="ghost-btn" id="rulesShortcut">Reglas</button>
+      <button class="ghost-btn" id="casinoShortcut">¿Quieres jugar?</button>
+      <span class="role-badge hidden" id="roleBadge"></span>
+      <button class="ghost-btn hidden" id="adminShortcut">Panel Admin</button>
+      <button class="warning-btn" id="publishShortcut">Publicar</button>
+      <button class="ghost-btn hidden" id="logoutBtn">Salir</button>
+    </nav>
+  </header>
+
+  <div id="toastRoot" class="toast-root" aria-live="polite"></div>
+  <main id="app" class="app-shell"></main>
+
+  <a href="#/create-post" class="floating-post-btn" id="floatingPostBtn" aria-label="Crear publicación">＋</a>
+
+  <script src="js/config.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/moderation.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/ageGate.js"></script>
+  <script src="js/reactions.js"></script>
+  <script src="js/comments.js"></script>
+  <script src="js/posts.js"></script>
+  <script src="js/feed.js"></script>
+  <script src="js/admin.js"></script>
+  <script src="js/casinoCoins.js"></script>
+  <script src="js/casino.js"></script>
+  <script src="js/powersRuleta.js"></script>
+  <script src="js/botRuleta.js"></script>
+  <script src="js/ruletaBogotana.js"></script>
+  <script src="js/router.js"></script>
+</body>
+</html>

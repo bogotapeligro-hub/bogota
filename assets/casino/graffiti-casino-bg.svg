@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600">
+  <rect width="1200" height="600" fill="#0b0d12"/>
+  <path d="M0 440 C240 350 360 500 590 420 S960 330 1200 390 V600 H0Z" fill="#151923"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M90 180 Q220 70 350 180 T610 180" stroke="#ffd43b" stroke-width="18" opacity=".22"/>
+    <path d="M710 150 Q820 70 940 160 T1130 150" stroke="#16d9ff" stroke-width="14" opacity=".2"/>
+    <path d="M160 315 L300 250 L430 320 L540 250" stroke="#ff3b3b" stroke-width="10" opacity=".18"/>
+  </g>
+  <g font-family="Arial Black, Arial" font-weight="900" fill="#ffffff" opacity=".06">
+    <text x="70" y="120" font-size="76">BOGOTA</text>
+    <text x="690" y="340" font-size="92">CASINO</text>
+    <text x="120" y="515" font-size="64">CALLEJERO</text>
+  </g>
+</svg>

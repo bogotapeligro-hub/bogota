@@ -1,0 +1,181 @@
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 212, 59, 0.4);
+  border-radius: 999px;
+  background: rgba(255, 212, 59, 0.1);
+  color: var(--yellow);
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.admin-dashboard {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+  display: grid;
+  gap: 18px;
+}
+
+.admin-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.admin-stat-card,
+.admin-section {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+}
+
+.admin-stat-card {
+  padding: 18px;
+}
+
+.admin-stat-card span,
+.admin-kicker,
+.admin-meta,
+.admin-report-row small,
+.admin-user-row small {
+  color: var(--muted);
+}
+
+.admin-stat-card strong {
+  display: block;
+  margin-top: 8px;
+  color: var(--yellow);
+  font-size: 2.2rem;
+}
+
+.admin-section {
+  padding: 20px;
+}
+
+.admin-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.admin-section h2 {
+  margin: 4px 0 0;
+}
+
+.admin-kicker {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.admin-list {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-item,
+.admin-report-row,
+.admin-user-row {
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.admin-item {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.admin-item h3 {
+  margin: 8px 0;
+}
+
+.admin-item p {
+  margin: 0;
+  color: var(--dirty-white);
+}
+
+.admin-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-top: 10px;
+  font-size: 0.88rem;
+}
+
+.admin-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-report-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.admin-user-row {
+  grid-template-columns: minmax(0, 1fr) 170px 170px;
+  align-items: center;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 26px;
+  padding: 0 9px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  font-size: 0.76rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.status-active { color: #56f2a6; background: rgba(86, 242, 166, 0.1); border-color: rgba(86, 242, 166, 0.35); }
+.status-pending { color: #ffd43b; background: rgba(255, 212, 59, 0.1); border-color: rgba(255, 212, 59, 0.35); }
+.status-hidden { color: #c8c8c8; background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.2); }
+.status-removed { color: #ff6b6b; background: rgba(255, 107, 107, 0.1); border-color: rgba(255, 107, 107, 0.35); }
+.status-reviewed { color: #63e6ff; background: rgba(99, 230, 255, 0.1); border-color: rgba(99, 230, 255, 0.35); }
+.status-open { color: #ffd43b; background: rgba(255, 212, 59, 0.1); border-color: rgba(255, 212, 59, 0.35); }
+.status-dismissed { color: #c8c8c8; background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.2); }
+
+.moderation-modal select,
+.moderation-modal textarea {
+  margin: 8px 0 14px;
+}
+
+@media (max-width: 980px) {
+  .admin-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-item,
+  .admin-report-row,
+  .admin-user-row {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-actions {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 520px) {
+  .admin-stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .role-badge {
+    display: none;
+  }
+}

@@ -1,0 +1,10 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Bogotá Alerta Urbana</title>
+  <desc id="desc">Logo textual urbano BAU con cinta de alerta</desc>
+  <rect width="128" height="128" rx="28" fill="#08090D"/>
+  <path d="M16 86L112 38" stroke="#FFD43B" stroke-width="18" stroke-linecap="round"/>
+  <path d="M22 84L32 79M45 72L55 67M68 60L78 55M91 48L101 43" stroke="#111111" stroke-width="7" stroke-linecap="round"/>
+  <rect x="24" y="24" width="80" height="80" rx="20" stroke="#16D9FF" stroke-width="4" fill="rgba(22,217,255,0.04)"/>
+  <text x="64" y="58" text-anchor="middle" font-family="Arial Black, Impact, sans-serif" font-size="28" fill="#F2F2EE" letter-spacing="-2">BAU</text>
+  <text x="64" y="80" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#FFD43B" font-weight="700">ALERTA</text>
+</svg>

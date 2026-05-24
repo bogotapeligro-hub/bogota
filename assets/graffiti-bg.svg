@@ -1,0 +1,18 @@
+<svg width="1400" height="900" viewBox="0 0 1400 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1400" height="900" fill="#10131A"/>
+  <g opacity="0.16">
+    <path d="M0 120H1400M0 240H1400M0 360H1400M0 480H1400M0 600H1400M0 720H1400M0 840H1400" stroke="#F2F2EE" stroke-width="2"/>
+    <path d="M120 0V900M260 0V900M420 0V900M560 0V900M710 0V900M860 0V900M1010 0V900M1180 0V900M1320 0V900" stroke="#F2F2EE" stroke-width="2"/>
+  </g>
+  <g opacity="0.22" font-family="Impact, Arial Black, sans-serif" font-weight="900">
+    <text x="80" y="180" font-size="86" fill="#16D9FF" transform="rotate(-8 80 180)">BOGOTÁ</text>
+    <text x="820" y="260" font-size="92" fill="#FFD43B" transform="rotate(7 820 260)">ALERTA</text>
+    <text x="190" y="650" font-size="120" fill="#FF3B3B" transform="rotate(-5 190 650)">URBANA</text>
+    <text x="880" y="730" font-size="58" fill="#E8E3D6" transform="rotate(-11 880 730)">MOVILIDAD</text>
+  </g>
+  <g opacity="0.12">
+    <circle cx="1120" cy="120" r="120" fill="#16D9FF"/>
+    <circle cx="210" cy="760" r="110" fill="#FFD43B"/>
+    <circle cx="690" cy="450" r="180" fill="#FF3B3B"/>
+  </g>
+</svg>
