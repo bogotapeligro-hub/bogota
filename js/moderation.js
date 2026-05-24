@@ -102,13 +102,13 @@ const Moderation = (() => {
       result.message = "Selecciona una categoria valida.";
     }
 
-    if (data.mediaUrl && !Posts.isValidMediaUrl(data.mediaUrl)) {
+    if (data.mediaUrl && !Posts.isValidMediaPayload(data.mediaUrl, data.mediaType)) {
       result.allowed = false;
       result.flags.push("URL multimedia invalida.");
       result.message = "La URL multimedia debe iniciar con https:// y no puede usar javascript: ni data:.";
     }
 
-    if (data.mediaUrl && !["image", "video"].includes(String(data.mediaType || "").toLowerCase())) {
+    if (data.mediaUrl && !["image", "video", "mixed"].includes(String(data.mediaType || "").toLowerCase())) {
       result.allowed = false;
       result.flags.push("Tipo multimedia invalido.");
       result.message = "Selecciona si la URL multimedia es imagen o video.";

@@ -1,7 +1,12 @@
 const Posts = (() => {
   const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
   const MAX_VIDEO_BYTES = 25 * 1024 * 1024;
-  let selectedMediaFile = null;
+  const MAX_IMAGE_FILES = 5;
+  const MAX_VIDEO_FILES = 1;
+  const MAX_VIDEO_SECONDS = 60;
+  const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"];
+  const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/webm", "video/quicktime"];
+  let selectedMediaFiles = [];
   let selectedMediaType = "none";
 
   function parseTags(value = "") {
@@ -26,9 +31,47 @@ const Posts = (() => {
 
   function normalizeMediaType(post) {
     const type = String(post.mediaType || "").trim().toLowerCase();
-    if (["image", "video", "none"].includes(type)) return type;
+    if (["image", "video", "mixed", "none"].includes(type)) return type;
     if (!post.mediaUrl) return "none";
     return "none";
+  }
+
+  function parseMediaItems(mediaUrl, mediaType = "none") {
+    const value = String(mediaUrl || "").trim();
+    if (!value) return [];
+
+    if (value.startsWith("[")) {
+      try {
+        return JSON.parse(value)
+          .filter(item => item && isValidMediaUrl(item.url) && ["image", "video"].includes(String(item.type || "").toLowerCase()))
+          .slice(0, MAX_IMAGE_FILES + MAX_VIDEO_FILES)
+          .map(item => ({
+            url: String(item.url || "").trim(),
+            type: String(item.type || "").trim().toLowerCase(),
+            name: String(item.name || "").trim()
+          }));
+      } catch {
+        return [];
+      }
+    }
+
+    const type = String(mediaType || "").trim().toLowerCase();
+    if (!["image", "video"].includes(type) || !isValidMediaUrl(value)) return [];
+    return [{ url: value, type, name: "" }];
+  }
+
+  function mediaTypeFromItems(items) {
+    const hasImage = items.some(item => item.type === "image");
+    const hasVideo = items.some(item => item.type === "video");
+    if (hasImage && hasVideo) return "mixed";
+    if (hasImage) return "image";
+    if (hasVideo) return "video";
+    return "none";
+  }
+
+  function isValidMediaPayload(mediaUrl, mediaType = "none") {
+    if (!mediaUrl) return true;
+    return parseMediaItems(mediaUrl, mediaType).length > 0;
   }
 
   function driveFileIdFromUrl(url) {
@@ -60,6 +103,7 @@ const Posts = (() => {
       location: String(post.location || "Zona no especificada"),
       mediaUrl: String(post.mediaUrl || "").trim(),
       mediaType: normalizeMediaType(post),
+      mediaItems: parseMediaItems(post.mediaUrl, post.mediaType),
       tags: post.tags || "",
       status: String(post.status || "active"),
       reactionCount: Number(post.reactionCount || 0),
@@ -70,36 +114,38 @@ const Posts = (() => {
 
   function renderMedia(rawPost) {
     const post = sanitizePostData(rawPost);
+    const items = post.mediaItems || [];
 
-    if (!post.mediaUrl || post.mediaType === "none") {
+    if (!items.length || post.mediaType === "none") {
       return `<div class="no-media">Sin contenido multimedia</div>`;
     }
 
-    if (!isValidMediaUrl(post.mediaUrl)) {
-      return `<div class="no-media">Multimedia no disponible</div>`;
-    }
+    return `
+      <div class="post-media-grid ${items.length === 1 ? "single-media" : ""}">
+        ${items.map((item, index) => renderMediaItem(item, index)).join("")}
+      </div>
+    `;
+  }
 
-    const safeUrl = UI.escapeHTML(displayMediaUrl(post.mediaUrl, post.mediaType));
-    if (post.mediaType === "image") {
+  function renderMediaItem(item, index) {
+    const safeUrl = UI.escapeHTML(displayMediaUrl(item.url, item.type));
+    const safeName = UI.escapeHTML(item.name || `Multimedia ${index + 1}`);
+    if (item.type === "image") {
       return `
         <div class="post-media-wrap">
-          <img class="post-media" src="${safeUrl}" alt="Imagen de la publicacion" loading="lazy" referrerpolicy="no-referrer" />
+          <img class="post-media" src="${safeUrl}" alt="${safeName}" loading="lazy" referrerpolicy="no-referrer" />
         </div>
       `;
     }
 
-    if (post.mediaType === "video") {
-      return `
-        <div class="post-media-wrap">
-          <video class="post-media" controls preload="metadata">
-            <source src="${safeUrl}">
-            Tu navegador no soporta video HTML5.
-          </video>
-        </div>
-      `;
-    }
-
-    return `<div class="no-media">Multimedia no disponible</div>`;
+    return `
+      <div class="post-media-wrap">
+        <video class="post-media" controls preload="metadata">
+          <source src="${safeUrl}">
+          Tu navegador no soporta video HTML5.
+        </video>
+      </div>
+    `;
   }
 
   function card(rawPost, compact = false) {
@@ -154,7 +200,7 @@ const Posts = (() => {
   function bindCreatePost() {
     const form = document.getElementById("createPostForm");
     if (!form) return;
-    selectedMediaFile = null;
+    selectedMediaFiles = [];
     selectedMediaType = "none";
 
     fillSelect(form.category, APP_CONFIG.categories, "Selecciona categoria");
@@ -189,12 +235,16 @@ const Posts = (() => {
       try {
         UI.showBusy("Estamos cargando tu publicacion, espera...");
         UI.setLoading(button, true, "Publicando...");
-        if (selectedMediaFile) {
-          UI.showBusy("Estamos subiendo tu foto o video, espera...");
+        if (selectedMediaFiles.length) {
+          UI.showBusy("Estamos subiendo tu multimedia, espera...");
           UI.setLoading(button, true, "Subiendo multimedia...");
           const uploaded = await uploadSelectedMedia();
-          data.mediaUrl = uploaded.mediaUrl;
-          data.mediaType = uploaded.mediaType;
+          data.mediaUrl = JSON.stringify(uploaded.map(item => ({
+            url: item.mediaUrl,
+            type: item.mediaType,
+            name: item.name || ""
+          })));
+          data.mediaType = mediaTypeFromItems(uploaded.map(item => ({ type: item.mediaType })));
           UI.hideBusy();
         }
         UI.showBusy("Estamos guardando tu publicacion, espera...");
@@ -224,61 +274,151 @@ const Posts = (() => {
     const clearButton = form.querySelector("#clearMediaBtn");
     if (!input || !preview || !clearButton) return;
 
+    renderSelectedMediaPreview(preview, input, clearButton);
+
     form.querySelectorAll("[data-pick-media]").forEach((button) => {
       button.addEventListener("click", () => {
         selectedMediaType = button.dataset.pickMedia;
         input.accept = selectedMediaType === "image" ? "image/*" : "video/*";
+        input.multiple = selectedMediaType === "image";
         input.click();
       });
     });
 
-    input.addEventListener("change", () => {
-      const file = input.files && input.files[0];
-      if (!file) return clearSelectedMedia(input, preview, clearButton);
-
-      const inferredType = file.type.startsWith("image/") ? "image" : file.type.startsWith("video/") ? "video" : "none";
-      if (inferredType === "none") {
-        clearSelectedMedia(input, preview, clearButton);
-        return UI.toast("Solo puedes subir imagenes o videos.", "error");
-      }
-
-      const maxBytes = inferredType === "image" ? MAX_IMAGE_BYTES : MAX_VIDEO_BYTES;
-      if (file.size > maxBytes) {
-        clearSelectedMedia(input, preview, clearButton);
-        return UI.toast(inferredType === "image" ? "La foto no puede superar 8 MB." : "El video no puede superar 25 MB.", "error");
-      }
-
-      selectedMediaFile = file;
-      selectedMediaType = inferredType;
-      clearButton.classList.remove("hidden");
-      renderMediaPreview(preview, file, inferredType);
+    input.addEventListener("change", async () => {
+      const files = Array.from(input.files || []);
+      input.value = "";
+      if (!files.length) return;
+      await addSelectedMedia(files, preview, input, clearButton);
     });
 
     clearButton.addEventListener("click", () => clearSelectedMedia(input, preview, clearButton));
+    preview.addEventListener("click", event => {
+      const button = event.target.closest("[data-remove-media-index]");
+      if (!button) return;
+      removeSelectedMedia(Number(button.dataset.removeMediaIndex), input, preview, clearButton);
+    });
   }
 
-  function renderMediaPreview(preview, file, mediaType) {
-    const objectUrl = URL.createObjectURL(file);
-    const safeName = UI.escapeHTML(file.name);
+  async function addSelectedMedia(files, preview, input, clearButton) {
+    for (const file of files) {
+      const inferredType = inferMediaType(file);
+      const validation = await validateSelectedFile(file, inferredType);
+      if (!validation.allowed) {
+        UI.toast(validation.message, "warning");
+        continue;
+      }
+      selectedMediaFiles.push({
+        file,
+        mediaType: inferredType,
+        previewUrl: URL.createObjectURL(file),
+        duration: validation.duration || 0
+      });
+    }
+    renderSelectedMediaPreview(preview, input, clearButton);
+  }
+
+  function inferMediaType(file) {
+    if (ALLOWED_IMAGE_TYPES.includes(file.type) || file.type.startsWith("image/")) return "image";
+    if (ALLOWED_VIDEO_TYPES.includes(file.type) || file.type.startsWith("video/")) return "video";
+    return "none";
+  }
+
+  async function validateSelectedFile(file, mediaType) {
+    if (mediaType === "none") {
+      return { allowed: false, message: "Solo puedes subir imagenes o videos validos." };
+    }
+
+    const imageCount = selectedMediaFiles.filter(item => item.mediaType === "image").length;
+    const videoCount = selectedMediaFiles.filter(item => item.mediaType === "video").length;
+
     if (mediaType === "image") {
-      preview.innerHTML = `
-        <img src="${objectUrl}" alt="Vista previa de la foto seleccionada" />
-        <span>${safeName}</span>
-      `;
+      if (imageCount >= MAX_IMAGE_FILES) return { allowed: false, message: "Solo puedes subir maximo 5 fotos." };
+      if (file.size > MAX_IMAGE_BYTES) return { allowed: false, message: "Cada foto no puede superar 8 MB." };
+      return { allowed: true };
+    }
+
+    if (videoCount >= MAX_VIDEO_FILES) return { allowed: false, message: "Solo puedes subir 1 video por publicacion." };
+    if (file.size > MAX_VIDEO_BYTES) return { allowed: false, message: "El video no puede superar 25 MB." };
+
+    const duration = await getVideoDuration(file);
+    if (duration > MAX_VIDEO_SECONDS) {
+      return { allowed: false, message: "El video no puede durar mas de 1 minuto." };
+    }
+    return { allowed: true, duration };
+  }
+
+  function getVideoDuration(file) {
+    return new Promise((resolve, reject) => {
+      const video = document.createElement("video");
+      const url = URL.createObjectURL(file);
+      video.preload = "metadata";
+      video.onloadedmetadata = () => {
+        const duration = Number(video.duration || 0);
+        URL.revokeObjectURL(url);
+        resolve(duration);
+      };
+      video.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error("No se pudo leer la duracion del video."));
+      };
+      video.src = url;
+    }).catch(error => {
+      UI.toast(error.message, "error");
+      return MAX_VIDEO_SECONDS + 1;
+    });
+  }
+
+  function renderSelectedMediaPreview(preview, input, clearButton) {
+    if (!selectedMediaFiles.length) {
+      preview.classList.remove("has-media");
+      clearButton.classList.add("hidden");
+      preview.textContent = "Sin contenido multimedia";
       return;
     }
 
-    preview.innerHTML = `
-      <video controls preload="metadata" src="${objectUrl}"></video>
-      <span>${safeName}</span>
-    `;
+    preview.classList.add("has-media");
+    clearButton.classList.remove("hidden");
+    preview.innerHTML = selectedMediaFiles.map((item, index) => {
+      const safeName = UI.escapeHTML(item.file.name);
+      const duration = item.mediaType === "video" && item.duration
+        ? `<span class="media-duration">${formatDuration(item.duration)}</span>`
+        : "";
+      const media = item.mediaType === "image"
+        ? `<img src="${item.previewUrl}" alt="Vista previa de ${safeName}" />`
+        : `<video controls preload="metadata" src="${item.previewUrl}"></video>`;
+      return `
+        <article class="media-preview-card">
+          ${media}
+          <button class="media-remove-btn" type="button" data-remove-media-index="${index}" aria-label="Eliminar ${safeName}">Quitar</button>
+          <span class="media-preview-name">${safeName}</span>
+          ${duration}
+        </article>
+      `;
+    }).join("");
+    input.value = "";
+  }
+
+  function formatDuration(seconds) {
+    const total = Math.ceil(Number(seconds) || 0);
+    return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
+  }
+
+  function removeSelectedMedia(index, input, preview, clearButton) {
+    const [removed] = selectedMediaFiles.splice(index, 1);
+    if (removed?.previewUrl) URL.revokeObjectURL(removed.previewUrl);
+    renderSelectedMediaPreview(preview, input, clearButton);
   }
 
   function clearSelectedMedia(input, preview, clearButton) {
-    selectedMediaFile = null;
+    selectedMediaFiles.forEach(item => {
+      if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+    });
+    selectedMediaFiles = [];
     selectedMediaType = "none";
     input.value = "";
     clearButton.classList.add("hidden");
+    preview.classList.remove("has-media");
     preview.textContent = "Sin contenido multimedia";
   }
 
@@ -292,14 +432,18 @@ const Posts = (() => {
   }
 
   async function uploadSelectedMedia() {
-    const content = await readFileAsBase64(selectedMediaFile);
-    return Api.apiUploadMedia(Auth.token(), {
-      name: selectedMediaFile.name,
-      mimeType: selectedMediaFile.type,
-      size: selectedMediaFile.size,
-      mediaType: selectedMediaType,
-      content
-    });
+    const uploaded = [];
+    for (const item of selectedMediaFiles) {
+      const content = await readFileAsBase64(item.file);
+      uploaded.push(await Api.apiUploadMedia(Auth.token(), {
+        name: item.file.name,
+        mimeType: item.file.type,
+        size: item.file.size,
+        mediaType: item.mediaType,
+        content
+      }));
+    }
+    return uploaded;
   }
 
   function fillSelect(select, items, placeholder) {
@@ -388,6 +532,7 @@ const Posts = (() => {
     renderMedia,
     sanitizePostData,
     isValidMediaUrl,
+    isValidMediaPayload,
     bindCreatePost,
     bindReportButtons,
     bindShareButtons,

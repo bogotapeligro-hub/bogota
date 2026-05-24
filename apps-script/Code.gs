@@ -232,15 +232,18 @@ function createPost(payload) {
   const mediaUrl = clean(data.mediaUrl);
   let mediaType = clean(data.mediaType).toLowerCase();
   const tags = clean(data.tags);
+  const mediaItems = parsePostMediaItems(mediaUrl, mediaType);
   const moderation = validateServerContent([title, description, location, tags, mediaUrl].join(" "));
 
   if (!title || title.length < 5) throw new Error("El título debe tener al menos 5 caracteres.");
   if (!description || description.length < 15) throw new Error("La descripción debe tener al menos 15 caracteres.");
   if (ALLOWED_CATEGORIES.indexOf(category) === -1) throw new Error("Categoría inválida.");
   if (!mediaUrl) mediaType = "none";
-  if (mediaUrl && !isValidMediaUrl(mediaUrl)) throw new Error("La URL multimedia debe iniciar con https:// y no puede usar javascript: ni data:.");
-  if (["image", "video", "none"].indexOf(mediaType) === -1) throw new Error("Tipo de multimedia invalido.");
+  if (mediaUrl && !mediaItems.length) throw new Error("La multimedia debe tener URLs https validas.");
+  if (["image", "video", "mixed", "none"].indexOf(mediaType) === -1) throw new Error("Tipo de multimedia invalido.");
   if (mediaUrl && mediaType === "none") throw new Error("Selecciona image o video para la URL multimedia.");
+  if (mediaItems.filter(function(item) { return item.type === "image"; }).length > 5) throw new Error("Solo puedes subir maximo 5 fotos.");
+  if (mediaItems.filter(function(item) { return item.type === "video"; }).length > 1) throw new Error("Solo puedes subir 1 video por publicacion.");
   if (!moderation.allowed) throw new Error(moderation.message);
 
   const post = {
@@ -974,6 +977,36 @@ function normalizeText(value) {
 function isValidMediaUrl(value) {
   const url = String(value || "").trim();
   return /^https:\/\/[^\s"'<>]+$/i.test(url) && !/^javascript:/i.test(url) && !/^data:/i.test(url);
+}
+
+function parsePostMediaItems(mediaUrl, mediaType) {
+  const value = String(mediaUrl || "").trim();
+  const type = String(mediaType || "").trim().toLowerCase();
+  if (!value) return [];
+
+  if (value.charAt(0) === "[") {
+    try {
+      const parsed = JSON.parse(value);
+      if (!Array.isArray(parsed)) return [];
+      return parsed
+        .filter(function(item) {
+          const itemType = String(item.type || "").trim().toLowerCase();
+          return ["image", "video"].indexOf(itemType) !== -1 && isValidMediaUrl(item.url);
+        })
+        .map(function(item) {
+          return {
+            url: String(item.url || "").trim(),
+            type: String(item.type || "").trim().toLowerCase(),
+            name: clean(item.name || "")
+          };
+        });
+    } catch (error) {
+      return [];
+    }
+  }
+
+  if (["image", "video"].indexOf(type) === -1 || !isValidMediaUrl(value)) return [];
+  return [{ url: value, type: type, name: "" }];
 }
 
 function now() {

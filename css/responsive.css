@@ -24,6 +24,7 @@
   .brand img { width: 38px; height: 38px; }
   .top-actions { gap: 6px; }
   .top-actions .ghost-btn { display: none; }
+  .top-actions #logoutBtn:not(.hidden) { display: inline-flex; }
   .app-shell { padding: 14px 14px calc(88px + env(safe-area-inset-bottom, 0px)); }
   .feed-layout,
   .detail-layout,
@@ -54,6 +55,14 @@
   .action-btn { margin: 4px 4px 4px 0; }
   .form-grid,
   .rule-grid { grid-template-columns: 1fr; }
+  .media-upload-preview.has-media,
+  .post-media-grid {
+    grid-template-columns: 1fr;
+  }
+  .media-remove-btn {
+    min-height: 40px;
+    padding: 9px 12px;
+  }
   .age-card,
   .modal-card { padding: 22px; }
   .age-actions,

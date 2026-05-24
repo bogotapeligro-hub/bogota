@@ -78,6 +78,10 @@ button { cursor: pointer; }
 .brand img { width: 44px; height: 44px; }
 .brand strong { color: var(--yellow); }
 .top-actions { display: flex; align-items: center; gap: 10px; }
+.session-btn:not(.hidden) {
+  display: inline-flex;
+  align-items: center;
+}
 
 .icon-btn,
 .ghost-btn,

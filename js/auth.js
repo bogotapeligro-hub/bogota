@@ -50,6 +50,11 @@ const Auth = (() => {
     localStorage.removeItem(APP_CONFIG.sessionKey);
     localStorage.removeItem("currentUser");
     localStorage.removeItem("authToken");
+    localStorage.removeItem("usuarioActual");
+    sessionStorage.removeItem(APP_CONFIG.sessionKey);
+    sessionStorage.removeItem("currentUser");
+    sessionStorage.removeItem("authToken");
+    sessionStorage.removeItem("usuarioActual");
     UI.syncTopbar();
   }
 
