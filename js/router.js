@@ -102,14 +102,18 @@ const Router = (() => {
     if (!box || !self) return;
     box.innerHTML = UI.skeletonPosts(1);
 
-    let profileUser = self;
+    const isViewingSelf = !requested || requested === self.userId || requested === self.username;
+    let profileUser = isViewingSelf
+      ? self
+      : { userId: requested, username: requested, role: "user", status: "active" };
     let posts = [];
+    let profileError = "";
     try {
       const known = typeof Chat !== "undefined"
         ? Chat.collectKnownUsers().find(user => user.userId === requested || user.username === requested)
         : null;
-      if (known) profileUser = { ...profileUser, ...known };
-      if (requested && requested !== self.userId && requested !== self.username && Api.apiGetUserProfile && Api.hasConfiguredApiUrl()) {
+      if (known) profileUser = { ...profileUser, ...known, role: profileUser.role || "user", status: profileUser.status || "active" };
+      if (!isViewingSelf && Api.apiGetUserProfile && Api.hasConfiguredApiUrl()) {
         const result = await Api.apiGetUserProfile(Auth.token(), requested);
         profileUser = result.user || profileUser;
         posts = result.posts || [];
@@ -117,11 +121,12 @@ const Router = (() => {
         const result = await Api.apiListPosts();
         posts = (result.posts || []).filter(post => String(post.userId) === String(profileUser.userId) || post.username === profileUser.username);
       }
-      if (!posts.length) {
+      if (!posts.length && !isViewingSelf && (!Api.apiGetUserProfile || !Api.hasConfiguredApiUrl())) {
         const result = await Api.apiListPosts();
         posts = (result.posts || []).filter(post => String(post.userId) === String(profileUser.userId) || post.username === profileUser.username);
       }
-    } catch {
+    } catch (error) {
+      profileError = String(error.message || "");
       posts = [];
     }
 
@@ -144,6 +149,7 @@ const Router = (() => {
       </div>
       <section class="profile-posts">
         <h2>Publicaciones</h2>
+        ${profileError ? `<p class="muted">Perfil cargado con datos locales. Para ver publicaciones completas de este usuario, actualiza el backend.</p>` : ""}
         ${posts.length ? posts.map(post => Posts.card(post, true)).join("") : `<p class="muted">No hay publicaciones para mostrar.</p>`}
       </section>
     `;

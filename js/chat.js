@@ -5,9 +5,11 @@ const Chat = (() => {
   const KNOWN_USERS_KEY = "bau_known_users_v1";
   const MAX_MESSAGES = 200;
   const SEND_COOLDOWN_MS = 900;
+  const BACKEND_CHAT_ERROR = "El chat necesita que vuelvas a desplegar apps-script/Code.gs y ejecutes setupSheets() para crear ChatMessages.";
   let lastSendAt = 0;
   let pollTimer = null;
   let lastToastAt = 0;
+  let backendChatAvailable = true;
 
   const currentUser = () => Auth.user();
   const safeUserId = (user = currentUser()) => String(user?.userId || user?.username || "guest");
@@ -47,6 +49,11 @@ const Chat = (() => {
     writeJson(KNOWN_USERS_KEY, users);
   }
 
+  function isUnsupportedBackendError(error) {
+    const message = String(error?.message || "");
+    return message.includes("soportada") || message.includes("ChatMessages") || message.includes("Falta la hoja");
+  }
+
   function markRead(scope, id) {
     const user = currentUser();
     if (!user) return;
@@ -68,7 +75,8 @@ const Chat = (() => {
       try {
         const result = await Api.apiListGlobalMessages(Auth.token());
         return (result.messages || []).slice(-MAX_MESSAGES);
-      } catch {
+      } catch (error) {
+        if (isUnsupportedBackendError(error)) backendChatAvailable = false;
         return readJson(GLOBAL_KEY, []);
       }
     }
@@ -100,7 +108,12 @@ const Chat = (() => {
         writeJson(GLOBAL_KEY, [...readJson(GLOBAL_KEY, []).filter(item => item.messageId !== message.messageId && item.messageId !== saved.messageId), saved].slice(-MAX_MESSAGES));
         return saved;
       } catch (error) {
-        if (!String(error.message || "").includes("soportada")) throw error;
+        writeJson(GLOBAL_KEY, readJson(GLOBAL_KEY, []).filter(item => item.messageId !== message.messageId));
+        if (isUnsupportedBackendError(error)) {
+          backendChatAvailable = false;
+          throw new Error(BACKEND_CHAT_ERROR);
+        }
+        throw error;
       }
     }
     return message;
@@ -114,7 +127,8 @@ const Chat = (() => {
       try {
         const result = await Api.apiListPrivateMessages(Auth.token(), peerId);
         return (result.messages || []).slice(-MAX_MESSAGES);
-      } catch {
+      } catch (error) {
+        if (isUnsupportedBackendError(error)) backendChatAvailable = false;
         return readJson(PRIVATE_KEY, {})[cid] || [];
       }
     }
@@ -154,9 +168,10 @@ const Chat = (() => {
         replacePrivateMessage(message.conversationId, message.messageId, { ...(result.message || message), status: "Mensaje enviado" });
         return result.message || message;
       } catch (error) {
-        if (String(error.message || "").includes("soportada")) {
-          replacePrivateMessage(message.conversationId, message.messageId, { ...message, status: "Mensaje enviado" });
-          return message;
+        if (isUnsupportedBackendError(error)) {
+          backendChatAvailable = false;
+          replacePrivateMessage(message.conversationId, message.messageId, { ...message, status: "Error: backend de chat no actualizado" });
+          throw new Error(BACKEND_CHAT_ERROR);
         }
         replacePrivateMessage(message.conversationId, message.messageId, { ...message, status: "Error al enviar" });
         throw error;
@@ -385,11 +400,15 @@ const Chat = (() => {
   function startPolling() {
     window.clearInterval(pollTimer);
     pollTimer = window.setInterval(async () => {
+      if (Api.hasConfiguredApiUrl() && !backendChatAvailable) {
+        updateBadges();
+        return;
+      }
       const panel = document.querySelector("[data-chat-scope]");
       if (panel?.dataset.chatScope === "global") await refreshGlobalMessages(false);
       if (panel?.dataset.chatScope === "private") await refreshPrivateMessages({ userId: panel.dataset.peerId, username: panel.dataset.peerName }, false);
       updateBadges();
-    }, 1600);
+    }, 3000);
   }
 
   window.addEventListener("storage", () => {

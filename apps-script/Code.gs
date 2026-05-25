@@ -34,6 +34,7 @@ const ALLOWED_USER_STATUSES = ["active", "blocked", "deleted"];
 const ALLOWED_CONTENT_STATUSES = ["active", "pending", "hidden", "removed", "reviewed"];
 const ALLOWED_REPORT_STATUSES = ["open", "reviewed", "dismissed"];
 const RULETA_POWER_IDS = ["manzana", "doble", "esposas", "escudo", "scanner", "cambio", "recarga", "curita"];
+const SHEETS_READY_CACHE_KEY = "bau_sheets_ready_v3";
 
 function doGet() {
   return jsonResponse({ success: true, message: "Bogotá Alerta Urbana API activa", data: { ok: true } });
@@ -117,6 +118,32 @@ function setupSheets() {
     });
     sheet.setFrozenRows(1);
   });
+  try {
+    CacheService.getScriptCache().put(SHEETS_READY_CACHE_KEY, "1", 21600);
+  } catch (error) {}
+}
+
+function ensureSheetsReady() {
+  try {
+    const cache = CacheService.getScriptCache();
+    if (cache.get(SHEETS_READY_CACHE_KEY) === "1") return;
+    const ss = getDatabaseSpreadsheet();
+    const missing = Object.keys(SHEETS).some(function(name) {
+      return !ss.getSheetByName(name);
+    });
+    if (missing) {
+      setupSheets();
+      return;
+    }
+    cache.put(SHEETS_READY_CACHE_KEY, "1", 21600);
+  } catch (error) {
+    // Si CacheService falla, no hacemos setup completo en cada request.
+    const ss = getDatabaseSpreadsheet();
+    const missing = Object.keys(SHEETS).some(function(name) {
+      return !ss.getSheetByName(name);
+    });
+    if (missing) setupSheets();
+  }
 }
 
 /** Crea un admin inicial. Cambia credenciales antes de ejecutar. */
@@ -136,7 +163,7 @@ function createAdminUser() {
 }
 
 function registerUser(payload) {
-  setupSheets();
+  ensureSheetsReady();
   const username = normalizeUsername(payload.username);
   const password = String(payload.password || "");
   const ageConfirmed = payload.ageConfirmed === true;
@@ -160,7 +187,7 @@ function registerUser(payload) {
 }
 
 function loginUser(payload) {
-  setupSheets();
+  ensureSheetsReady();
   const username = normalizeUsername(payload.username);
   const password = String(payload.password || "");
   const usersSheet = getSheet("Users");
@@ -265,15 +292,16 @@ function createPost(payload) {
 }
 
 function listPosts() {
-  setupSheets();
+  ensureSheetsReady();
   const posts = sheetToObjects(getSheet("Posts"))
     .filter(function(post) { return post.status === "active"; })
-    .sort(function(a, b) { return new Date(b.createdAt) - new Date(a.createdAt); });
+    .sort(function(a, b) { return new Date(b.createdAt) - new Date(a.createdAt); })
+    .slice(0, 80);
   return { posts: posts };
 }
 
 function getPost(payload) {
-  setupSheets();
+  ensureSheetsReady();
   const postId = clean(payload.postId);
   const posts = sheetToObjects(getSheet("Posts"));
   const post = posts.find(function(p) { return p.postId === postId; });
@@ -321,7 +349,7 @@ function getUserProfile(payload) {
 
 function listGlobalMessages(payload) {
   requireUser(payload.token);
-  setupSheets();
+  ensureSheetsReady();
   const messages = sheetToObjects(getSheet("ChatMessages"))
     .filter(function(message) { return message.scope === "global"; })
     .sort(function(a, b) { return new Date(a.createdAt) - new Date(b.createdAt); })
@@ -686,7 +714,7 @@ function adminListAuditLog(payload) {
 
 function ruletaJoinMatch(payload) {
   const user = requireUser(payload.token);
-  setupSheets();
+  ensureSheetsReady();
   expireOldRuletaQueue();
 
   const active = findRuletaMatchForUser(user.userId);
@@ -867,7 +895,7 @@ function expireOldRuletaQueue() {
 }
 
 function requireUser(token) {
-  setupSheets();
+  ensureSheetsReady();
   const tokenHash = sha256(String(token || ""));
   const sessions = sheetToObjects(getSheet("Sessions"));
   const session = sessions.find(function(s) { return s.tokenHash === tokenHash && String(s.active) === "true" && new Date(s.expiresAt) > new Date(); });
@@ -884,7 +912,7 @@ function requireAdmin(token) {
 }
 
 function requireUser(token) {
-  setupSheets();
+  ensureSheetsReady();
   const tokenHash = sha256(String(token || ""));
   const sessions = sheetToObjects(getSheet("Sessions"));
   const session = sessions.find(function(s) {
