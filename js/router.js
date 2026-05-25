@@ -31,6 +31,7 @@ const Router = (() => {
     if (path.startsWith("/post/")) return renderPostDetail(decodeURIComponent(path.replace("/post/", "")));
     if (path.startsWith("/profile/")) return renderProfile(decodeURIComponent(path.replace("/profile/", "")));
     if (path.startsWith("/chat/")) return Chat.renderPrivate(decodeURIComponent(path.replace("/chat/", "")));
+    if (path.startsWith("/casino-game/")) return CasinoArcade.render(decodeURIComponent(path.replace("/casino-game/", "")));
 
     const route = routes[path] || routes["/feed"];
     if (route.auth && !UI.requireSession()) return;
