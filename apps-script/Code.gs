@@ -17,6 +17,8 @@ const SHEETS = {
   AuditLog: ["logId", "userId", "action", "targetType", "targetId", "details", "createdAt"],
   RuletaQueue: ["queueId", "userId", "username", "status", "matchId", "createdAt", "updatedAt"],
   RuletaMatches: ["matchId", "status", "player1Id", "player1Username", "player2Id", "player2Username", "stateJson", "createdAt", "updatedAt"],
+  CasinoGameQueue: ["queueId", "gameType", "userId", "username", "status", "matchId", "createdAt", "updatedAt"],
+  CasinoGameMatches: ["matchId", "gameType", "status", "player1Id", "player1Username", "player2Id", "player2Username", "stateJson", "createdAt", "updatedAt"],
   ChatMessages: ["messageId", "scope", "conversationId", "fromUserId", "fromUsername", "toUserId", "toUsername", "text", "mediaUrl", "mediaType", "createdAt", "readBy"]
 };
 
@@ -79,6 +81,10 @@ function doPost(e) {
       case "ruletaGetMatch": data = ruletaGetMatch(payload); break;
       case "ruletaSaveMatch": data = ruletaSaveMatch(payload); break;
       case "ruletaCancelMatchmaking": data = ruletaCancelMatchmaking(payload); break;
+      case "casinoJoinGameMatch": data = casinoJoinGameMatch(payload); break;
+      case "casinoGetGameMatch": data = casinoGetGameMatch(payload); break;
+      case "casinoSaveGameMatch": data = casinoSaveGameMatch(payload); break;
+      case "casinoCancelGameMatchmaking": data = casinoCancelGameMatchmaking(payload); break;
       case "getUserProfile": data = getUserProfile(payload); break;
       case "listGlobalMessages": data = listGlobalMessages(payload); break;
       case "createGlobalMessage": data = createGlobalMessage(payload); break;
@@ -822,6 +828,102 @@ function ruletaCancelMatchmaking(payload) {
   return { ok: true };
 }
 
+function casinoJoinGameMatch(payload) {
+  const user = requireUser(payload.token);
+  ensureSheetsReady();
+  expireOldCasinoGameQueue();
+  const gameType = normalizeCasinoGameType(payload.gameType);
+
+  const active = findCasinoGameMatchForUser(user.userId, gameType);
+  if (active) return { status: "matched", match: publicCasinoGameMatch(active, user) };
+
+  const queueSheet = getSheet("CasinoGameQueue");
+  const queue = sheetToObjects(queueSheet);
+  const ownWaitingIndex = queue.findIndex(function(q) {
+    return q.gameType === gameType && q.userId === user.userId && q.status === "waiting";
+  });
+  if (ownWaitingIndex >= 0) {
+    return { status: "waiting", matchId: "", queueId: queue[ownWaitingIndex].queueId };
+  }
+
+  const otherIndex = queue.findIndex(function(q) {
+    return q.gameType === gameType && q.userId !== user.userId && q.status === "waiting";
+  });
+
+  if (otherIndex >= 0) {
+    const other = queue[otherIndex];
+    const match = createCasinoGameMatch(gameType,
+      { userId: other.userId, username: other.username },
+      { userId: user.userId, username: user.username }
+    );
+    queueSheet.getRange(otherIndex + 2, SHEETS.CasinoGameQueue.indexOf("status") + 1).setValue("matched");
+    queueSheet.getRange(otherIndex + 2, SHEETS.CasinoGameQueue.indexOf("matchId") + 1).setValue(match.matchId);
+    queueSheet.getRange(otherIndex + 2, SHEETS.CasinoGameQueue.indexOf("updatedAt") + 1).setValue(now());
+    audit(user.userId, "casinoJoinGameMatch", "casino", match.matchId, gameType);
+    return { status: "matched", match: publicCasinoGameMatch(match, user) };
+  }
+
+  const queueRow = {
+    queueId: makeId("cgq"),
+    gameType: gameType,
+    userId: user.userId,
+    username: user.username,
+    status: "waiting",
+    matchId: "",
+    createdAt: now(),
+    updatedAt: now()
+  };
+  appendObject(queueSheet, SHEETS.CasinoGameQueue, queueRow);
+  audit(user.userId, "casinoJoinGameQueue", "casino", queueRow.queueId, gameType);
+  return { status: "waiting", queueId: queueRow.queueId, matchId: "" };
+}
+
+function casinoGetGameMatch(payload) {
+  const user = requireUser(payload.token);
+  const matchId = clean(payload.matchId);
+  const match = getCasinoGameMatchById(matchId);
+  if (!match) throw new Error("Partida no encontrada.");
+  assertCasinoGameMatchUser(match, user.userId);
+  return { match: publicCasinoGameMatch(match, user) };
+}
+
+function casinoSaveGameMatch(payload) {
+  const user = requireUser(payload.token);
+  const matchId = clean(payload.matchId);
+  const match = getCasinoGameMatchById(matchId);
+  if (!match) throw new Error("Partida no encontrada.");
+  assertCasinoGameMatchUser(match, user.userId);
+
+  const state = payload.state || {};
+  const stateJson = JSON.stringify(state);
+  if (stateJson.length > 45000) throw new Error("El estado de la partida es demasiado grande.");
+
+  const sheet = getSheet("CasinoGameMatches");
+  const matches = sheetToObjects(sheet);
+  const idx = matches.findIndex(function(m) { return m.matchId === matchId; });
+  const status = state.gameOver ? "finished" : "active";
+  const updatedAt = now();
+  sheet.getRange(idx + 2, SHEETS.CasinoGameMatches.indexOf("status") + 1).setValue(status);
+  sheet.getRange(idx + 2, SHEETS.CasinoGameMatches.indexOf("stateJson") + 1).setValue(stateJson);
+  sheet.getRange(idx + 2, SHEETS.CasinoGameMatches.indexOf("updatedAt") + 1).setValue(updatedAt);
+  return { match: publicCasinoGameMatch(getCasinoGameMatchById(matchId), user) };
+}
+
+function casinoCancelGameMatchmaking(payload) {
+  const user = requireUser(payload.token);
+  const gameType = normalizeCasinoGameType(payload.gameType);
+  const sheet = getSheet("CasinoGameQueue");
+  const queue = sheetToObjects(sheet);
+  queue.forEach(function(q, idx) {
+    if (q.gameType === gameType && q.userId === user.userId && q.status === "waiting") {
+      sheet.getRange(idx + 2, SHEETS.CasinoGameQueue.indexOf("status") + 1).setValue("cancelled");
+      sheet.getRange(idx + 2, SHEETS.CasinoGameQueue.indexOf("updatedAt") + 1).setValue(now());
+    }
+  });
+  audit(user.userId, "casinoCancelGameQueue", "casino", user.userId, gameType);
+  return { ok: true };
+}
+
 function createRuletaMatch(player1, player2) {
   const match = {
     matchId: makeId("rm"),
@@ -905,6 +1007,96 @@ function expireOldRuletaQueue() {
     if (q.status === "waiting" && new Date(q.updatedAt || q.createdAt).getTime() < cutoff) {
       sheet.getRange(idx + 2, SHEETS.RuletaQueue.indexOf("status") + 1).setValue("expired");
       sheet.getRange(idx + 2, SHEETS.RuletaQueue.indexOf("updatedAt") + 1).setValue(now());
+    }
+  });
+}
+
+function normalizeCasinoGameType(value) {
+  const gameType = clean(value).toLowerCase();
+  if (["dados-calle", "cartas-distrito"].indexOf(gameType) === -1) throw new Error("Juego de casino invalido.");
+  return gameType;
+}
+
+function createCasinoGameMatch(gameType, player1, player2) {
+  const match = {
+    matchId: makeId("cgm"),
+    gameType: gameType,
+    status: "active",
+    player1Id: player1.userId,
+    player1Username: player1.username,
+    player2Id: player2.userId,
+    player2Username: player2.username,
+    stateJson: JSON.stringify(createCasinoGameInitialState(gameType, player1, player2)),
+    createdAt: now(),
+    updatedAt: now()
+  };
+  appendObject(getSheet("CasinoGameMatches"), SHEETS.CasinoGameMatches, match);
+  return match;
+}
+
+function createCasinoGameInitialState(gameType, player1, player2) {
+  const names = casinoGameNames();
+  return {
+    gameType: gameType,
+    mode: "online",
+    title: names[gameType] || "Duelo Bogotano",
+    round: 1,
+    maxRounds: 3,
+    currentTurn: "player",
+    players: {
+      player: { userId: player1.userId, name: player1.username, score: 0 },
+      enemy: { userId: player2.userId, name: player2.username, score: 0 }
+    },
+    roundData: {},
+    log: ["Partida online creada. Esperando primera jugada."],
+    statusMessage: "Tu turno",
+    gameOver: false,
+    winner: ""
+  };
+}
+
+function casinoGameNames() {
+  return {
+    "dados-calle": "Dados de la Calle",
+    "cartas-distrito": "Cartas del Distrito"
+  };
+}
+
+function getCasinoGameMatchById(matchId) {
+  return sheetToObjects(getSheet("CasinoGameMatches")).find(function(m) { return m.matchId === matchId; });
+}
+
+function findCasinoGameMatchForUser(userId, gameType) {
+  return sheetToObjects(getSheet("CasinoGameMatches")).find(function(m) {
+    return m.gameType === gameType && m.status === "active" && (m.player1Id === userId || m.player2Id === userId);
+  });
+}
+
+function assertCasinoGameMatchUser(match, userId) {
+  if (match.player1Id !== userId && match.player2Id !== userId) throw new Error("No perteneces a esta partida.");
+}
+
+function publicCasinoGameMatch(match, user) {
+  const state = match.stateJson ? JSON.parse(match.stateJson) : {};
+  return {
+    matchId: match.matchId,
+    gameType: match.gameType,
+    status: match.status,
+    mySlot: match.player1Id === user.userId ? "player" : "enemy",
+    state: state,
+    createdAt: match.createdAt,
+    updatedAt: match.updatedAt
+  };
+}
+
+function expireOldCasinoGameQueue() {
+  const sheet = getSheet("CasinoGameQueue");
+  const queue = sheetToObjects(sheet);
+  const cutoff = Date.now() - 2 * 60 * 1000;
+  queue.forEach(function(q, idx) {
+    if (q.status === "waiting" && new Date(q.updatedAt || q.createdAt).getTime() < cutoff) {
+      sheet.getRange(idx + 2, SHEETS.CasinoGameQueue.indexOf("status") + 1).setValue("expired");
+      sheet.getRange(idx + 2, SHEETS.CasinoGameQueue.indexOf("updatedAt") + 1).setValue(now());
     }
   });
 }

@@ -1300,3 +1300,125 @@ html, body {
   .power-card { min-width: 62px; max-width: 78px; padding: .45rem; }
   .end-title { font-size: 2rem; }
 }
+
+/* ============================================================
+   DUELOS DE CASINO: Dados de la Calle / Cartas del Distrito
+   ============================================================ */
+.duelo-root {
+  min-height: calc(100vh - var(--topbar-height, 74px));
+  color: var(--text-main);
+}
+
+.duelo-mode {
+  min-height: calc(100vh - var(--topbar-height, 74px));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  background: radial-gradient(ellipse at 50% 30%, #10102a 0%, #07070f 100%);
+}
+
+.duelo-mode-box {
+  max-width: 620px;
+}
+
+.duelo-logo {
+  font-family: var(--font-mono);
+  color: var(--neon-yellow);
+  font-size: 1.55rem;
+}
+
+.duelo-arena {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.duelo-table {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, .72fr) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: stretch;
+  min-height: 420px;
+  margin: 1rem 0;
+  padding: 1rem;
+  border: 1px solid var(--dark-border);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at center, rgba(255,214,0,.12), transparent 32%),
+    linear-gradient(145deg, rgba(13,13,34,.96), rgba(7,7,15,.96));
+  box-shadow: 0 24px 80px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.06);
+}
+
+.duelo-player,
+.duelo-center {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: .9rem;
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 18px;
+  background: rgba(255,255,255,.035);
+}
+
+.duelo-player strong {
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 8vw, 5.5rem);
+  color: var(--neon-yellow);
+  line-height: .9;
+  text-shadow: 0 0 28px rgba(255,214,0,.28);
+}
+
+.duelo-result {
+  min-height: 62px;
+  width: 100%;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(0,229,255,.18);
+  border-radius: 14px;
+  background: rgba(0,229,255,.06);
+  color: #fff;
+  font-family: var(--font-mono);
+  text-align: center;
+  padding: .65rem;
+}
+
+.duelo-symbol {
+  width: 132px;
+  height: 132px;
+  display: grid;
+  place-items: center;
+  border-radius: 28px;
+  background: linear-gradient(145deg, #24243f, #090912);
+  border: 1px solid rgba(255,214,0,.24);
+  box-shadow:
+    0 22px 44px rgba(0,0,0,.5),
+    inset 0 2px 0 rgba(255,255,255,.08),
+    0 0 38px rgba(255,214,0,.12);
+  font-size: 3.2rem;
+}
+
+.duelo-log-panel {
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+@media (max-width: 760px) {
+  .duelo-mode {
+    align-items: start;
+  }
+  .duelo-table {
+    grid-template-columns: 1fr;
+    min-height: auto;
+  }
+  .duelo-center {
+    order: -1;
+  }
+  .duelo-symbol {
+    width: 96px;
+    height: 96px;
+    font-size: 2.4rem;
+  }
+}

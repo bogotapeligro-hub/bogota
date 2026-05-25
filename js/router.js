@@ -6,6 +6,8 @@ const Router = (() => {
     "/create-post": { view: "create-post", auth: true, bind: () => Posts.bindCreatePost() },
     "/casino": { view: "casino", auth: true, bind: () => Casino.bind() },
     "/ruleta-bogotana": { view: "ruleta-bogotana", auth: true, bind: () => RuletaBogotana.init() },
+    "/dados-calle": { view: "dados-calle", auth: true, bind: () => CasinoDuelos.init("dados-calle") },
+    "/cartas-distrito": { view: "cartas-distrito", auth: true, bind: () => CasinoDuelos.init("cartas-distrito") },
     "/profile": { custom: () => renderProfile(), auth: true },
     "/chat": { custom: () => Chat.renderGlobal(), auth: true },
     "/mapa": { custom: () => MapaReportes.render(), auth: true },

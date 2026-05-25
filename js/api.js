@@ -235,6 +235,22 @@ const Api = (() => {
     return apiRequest("ruletaCancelMatchmaking", { token });
   }
 
+  function apiCasinoJoinGameMatch(token, gameType) {
+    return apiRequest("casinoJoinGameMatch", { token, gameType });
+  }
+
+  function apiCasinoGetGameMatch(token, matchId) {
+    return apiRequest("casinoGetGameMatch", { token, matchId });
+  }
+
+  function apiCasinoSaveGameMatch(token, matchId, state) {
+    return apiRequest("casinoSaveGameMatch", { token, matchId, state });
+  }
+
+  function apiCasinoCancelGameMatchmaking(token, gameType) {
+    return apiRequest("casinoCancelGameMatchmaking", { token, gameType });
+  }
+
   function apiGetUserProfile(token, userIdOrUsername) {
     return apiRequest("getUserProfile", { token, userIdOrUsername });
   }
@@ -291,6 +307,10 @@ const Api = (() => {
     apiRuletaGetMatch,
     apiRuletaSaveMatch,
     apiRuletaCancelMatchmaking,
+    apiCasinoJoinGameMatch,
+    apiCasinoGetGameMatch,
+    apiCasinoSaveGameMatch,
+    apiCasinoCancelGameMatchmaking,
     apiGetUserProfile,
     apiListGlobalMessages,
     apiCreateGlobalMessage,
