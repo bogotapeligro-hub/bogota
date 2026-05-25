@@ -29,7 +29,14 @@
   .feed-layout,
   .detail-layout,
   .single-form-layout,
-  .chat-layout { display: block; }
+  .chat-layout,
+  .map-layout { display: block; }
+  .feed-tools-row {
+    grid-template-columns: 1fr;
+  }
+  .feed-map-link {
+    width: 100%;
+  }
   .left-sidebar {
     position: fixed;
     top: var(--topbar-height);
@@ -43,6 +50,15 @@
     transition: transform 0.22s ease;
     z-index: 36;
     overflow-y: auto;
+  }
+  body.sidebar-open::before {
+    content: "";
+    position: fixed;
+    inset: var(--topbar-height) 0 0;
+    background: rgba(0, 0, 0, 0.52);
+    backdrop-filter: blur(2px);
+    z-index: 35;
+    animation: sidebarScrimIn 0.18s ease both;
   }
   body.sidebar-open .left-sidebar { transform: translateX(0); }
   .feed-hero,
@@ -76,6 +92,15 @@
   }
   .chat-bubble {
     max-width: 82%;
+  }
+  .report-map-card {
+    grid-template-columns: 1fr;
+  }
+  .report-map-canvas {
+    min-height: 420px;
+  }
+  .report-map-list {
+    max-height: none;
   }
   .reaction-group { margin-bottom: 8px; }
   .action-btn { margin: 4px 4px 4px 0; }
@@ -121,6 +146,11 @@
   .table-3d { min-height: 230px; border-radius: 18px; }
   .duel-device { height: 60px; }
   .power-card { width: 100%; }
+}
+
+@keyframes sidebarScrimIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @media (max-width: 430px) {

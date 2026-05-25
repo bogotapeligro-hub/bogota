@@ -2,6 +2,7 @@ const UI = (() => {
   const app = () => document.getElementById("app");
   const toastRoot = () => document.getElementById("toastRoot");
   let busyCount = 0;
+  let navigationBound = false;
 
   function escapeHTML(value = "") {
     return String(value)
@@ -132,13 +133,38 @@ const UI = (() => {
   }
 
   function bindGlobalNavigation() {
+    if (navigationBound) return;
+    navigationBound = true;
     document.getElementById("rulesShortcut")?.addEventListener("click", () => location.hash = "#/rules");
     document.getElementById("chatShortcut")?.addEventListener("click", () => location.hash = "#/chat");
     document.getElementById("casinoShortcut")?.addEventListener("click", () => location.hash = "#/casino");
     document.getElementById("adminShortcut")?.addEventListener("click", () => location.hash = "#/admin");
     document.getElementById("publishShortcut")?.addEventListener("click", () => location.hash = "#/create-post");
     document.getElementById("logoutBtn")?.addEventListener("click", () => Auth.logout());
-    document.getElementById("menuToggle")?.addEventListener("click", () => document.body.classList.toggle("sidebar-open"));
+    document.getElementById("menuToggle")?.addEventListener("click", (event) => {
+      event.stopPropagation();
+      toggleSidebar();
+    });
+    document.addEventListener("click", (event) => {
+      if (!document.body.classList.contains("sidebar-open")) return;
+      const sidebar = document.querySelector(".left-sidebar");
+      if (sidebar?.contains(event.target) || event.target.closest("#menuToggle")) return;
+      closeSidebar();
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") closeSidebar();
+    });
+    window.addEventListener("hashchange", closeSidebar);
+  }
+
+  function toggleSidebar(force) {
+    const next = typeof force === "boolean" ? force : !document.body.classList.contains("sidebar-open");
+    document.body.classList.toggle("sidebar-open", next);
+    document.getElementById("menuToggle")?.setAttribute("aria-expanded", String(next));
+  }
+
+  function closeSidebar() {
+    toggleSidebar(false);
   }
 
   function syncTopbar() {
@@ -180,6 +206,7 @@ const UI = (() => {
     skeletonPosts,
     emptyState,
     bindGlobalNavigation,
+    closeSidebar,
     syncTopbar,
     requireSession
   };

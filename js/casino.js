@@ -11,6 +11,7 @@ const Casino = (() => {
       CasinoCoins.initializeCoins();
       CasinoCoins.renderCoinBalance(document);
       bindPlayButtons();
+      if (typeof CasinoMiniGames !== "undefined") CasinoMiniGames.render();
     }
   }
 

@@ -17,7 +17,7 @@ const SHEETS = {
   AuditLog: ["logId", "userId", "action", "targetType", "targetId", "details", "createdAt"],
   RuletaQueue: ["queueId", "userId", "username", "status", "matchId", "createdAt", "updatedAt"],
   RuletaMatches: ["matchId", "status", "player1Id", "player1Username", "player2Id", "player2Username", "stateJson", "createdAt", "updatedAt"],
-  ChatMessages: ["messageId", "scope", "conversationId", "fromUserId", "fromUsername", "toUserId", "toUsername", "text", "createdAt", "readBy"]
+  ChatMessages: ["messageId", "scope", "conversationId", "fromUserId", "fromUsername", "toUserId", "toUsername", "text", "mediaUrl", "mediaType", "createdAt", "readBy"]
 };
 
 const SESSION_DAYS = 7;
@@ -359,7 +359,8 @@ function listGlobalMessages(payload) {
 
 function createGlobalMessage(payload) {
   const user = requireUser(payload.token);
-  const text = cleanChatText(payload.text);
+  const media = cleanChatMedia(payload.mediaUrl, payload.mediaType);
+  const text = cleanChatText(payload.text || (media.mediaUrl ? "Imagen" : ""));
   const message = {
     messageId: makeId("gmsg"),
     scope: "global",
@@ -369,6 +370,8 @@ function createGlobalMessage(payload) {
     toUserId: "",
     toUsername: "",
     text: text,
+    mediaUrl: media.mediaUrl,
+    mediaType: media.mediaType,
     createdAt: now(),
     readBy: user.userId
   };
@@ -392,7 +395,8 @@ function createPrivateMessage(payload) {
   const user = requireUser(payload.token);
   const peer = findChatPeer(clean(payload.peerUserId));
   if (peer.userId === user.userId) throw new Error("No puedes chatear contigo mismo.");
-  const text = cleanChatText(payload.text);
+  const media = cleanChatMedia(payload.mediaUrl, payload.mediaType);
+  const text = cleanChatText(payload.text || (media.mediaUrl ? "Imagen" : ""));
   const cid = chatConversationId(user.userId, peer.userId);
   const message = {
     messageId: makeId("pmsg"),
@@ -403,6 +407,8 @@ function createPrivateMessage(payload) {
     toUserId: peer.userId,
     toUsername: peer.username,
     text: text,
+    mediaUrl: media.mediaUrl,
+    mediaType: media.mediaType,
     createdAt: now(),
     readBy: user.userId
   };
@@ -448,6 +454,15 @@ function cleanChatText(value) {
   const moderation = validateServerContent(text, true);
   if (!moderation.allowed) throw new Error(moderation.message);
   return text;
+}
+
+function cleanChatMedia(mediaUrl, mediaType) {
+  const url = clean(mediaUrl);
+  const type = clean(mediaType).toLowerCase();
+  if (!url && !type) return { mediaUrl: "", mediaType: "" };
+  if (type !== "image") throw new Error("Por ahora el chat solo permite imagenes.");
+  if (!isValidMediaUrl(url)) throw new Error("La imagen del chat debe tener una URL https valida.");
+  return { mediaUrl: url, mediaType: type };
 }
 
 function react(payload) {

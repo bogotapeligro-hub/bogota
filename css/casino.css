@@ -498,6 +498,57 @@ button.disabled-play-button {
   justify-content: center;
 }
 
+.casino-mini-section {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--dark-border);
+}
+
+.casino-mini-heading {
+  margin-bottom: 1.4rem;
+}
+
+.casino-mini-heading h2 {
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  color: #fff;
+  letter-spacing: 1.5px;
+  margin: .55rem 0 .2rem;
+}
+
+.casino-mini-heading p {
+  color: var(--text-muted);
+}
+
+.casino-mini-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.2rem;
+}
+
+.casino-mini-card {
+  min-height: 100%;
+}
+
+.mini-game-face {
+  font-family: var(--font-mono);
+  font-size: 1.35rem;
+  color: var(--neon-yellow);
+  text-shadow: 0 0 18px rgba(255,214,0,.45);
+}
+
+.mini-game-status {
+  min-height: 44px;
+  margin: 0 0 1rem;
+  padding: .75rem .85rem;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 8px;
+  background: rgba(255,255,255,.045);
+  color: var(--text-main);
+  font-family: var(--font-mono);
+  font-size: .78rem;
+}
+
 /* Footer */
 .casino-footer {
   background: var(--dark-card);

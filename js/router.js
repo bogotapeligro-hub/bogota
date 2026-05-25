@@ -8,6 +8,7 @@ const Router = (() => {
     "/ruleta-bogotana": { view: "ruleta-bogotana", auth: true, bind: () => RuletaBogotana.init() },
     "/profile": { custom: () => renderProfile(), auth: true },
     "/chat": { custom: () => Chat.renderGlobal(), auth: true },
+    "/mapa": { custom: () => MapaReportes.render(), auth: true },
     "/rules": { view: "rules" },
     "/admin": { view: "admin", auth: true, moderation: true, bind: () => Admin.initAdminPanel() }
   };

@@ -243,16 +243,16 @@ const Api = (() => {
     return apiRequest("listGlobalMessages", { token });
   }
 
-  function apiCreateGlobalMessage(token, text) {
-    return apiRequest("createGlobalMessage", { token, text });
+  function apiCreateGlobalMessage(token, text, media = {}) {
+    return apiRequest("createGlobalMessage", { token, text, mediaUrl: media.mediaUrl || "", mediaType: media.mediaType || "" });
   }
 
   function apiListPrivateMessages(token, peerUserId) {
     return apiRequest("listPrivateMessages", { token, peerUserId });
   }
 
-  function apiCreatePrivateMessage(token, peerUserId, text) {
-    return apiRequest("createPrivateMessage", { token, peerUserId, text });
+  function apiCreatePrivateMessage(token, peerUserId, text, media = {}) {
+    return apiRequest("createPrivateMessage", { token, peerUserId, text, mediaUrl: media.mediaUrl || "", mediaType: media.mediaType || "" });
   }
 
   function apiMarkPrivateRead(token, peerUserId) {

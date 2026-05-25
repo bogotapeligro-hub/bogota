@@ -5,6 +5,7 @@ const Chat = (() => {
   const KNOWN_USERS_KEY = "bau_known_users_v1";
   const MAX_MESSAGES = 200;
   const SEND_COOLDOWN_MS = 900;
+  const MAX_CHAT_IMAGE_BYTES = 4 * 1024 * 1024;
   const BACKEND_CHAT_ERROR = "El chat necesita que vuelvas a desplegar apps-script/Code.gs y ejecutes setupSheets() para crear ChatMessages.";
   let lastSendAt = 0;
   let pollTimer = null;
@@ -83,11 +84,11 @@ const Chat = (() => {
     return readJson(GLOBAL_KEY, []);
   }
 
-  async function sendGlobalMessage(text) {
+  async function sendGlobalMessage(text, media = {}) {
     const user = currentUser();
     if (!user) throw new Error("Debes iniciar sesion para chatear.");
     const cleanText = normalizeText(text);
-    if (!cleanText) throw new Error("No puedes enviar mensajes vacios.");
+    if (!cleanText && !media.mediaUrl) throw new Error("No puedes enviar mensajes vacios.");
     if (Date.now() - lastSendAt < SEND_COOLDOWN_MS) throw new Error("Espera un momento antes de enviar otro mensaje.");
     lastSendAt = Date.now();
 
@@ -96,14 +97,16 @@ const Chat = (() => {
       scope: "global",
       fromUserId: safeUserId(user),
       fromUsername: user.username,
-      text: cleanText,
+      text: cleanText || "Imagen",
+      mediaUrl: media.mediaUrl || "",
+      mediaType: media.mediaType || "",
       createdAt: new Date().toISOString()
     };
     writeJson(GLOBAL_KEY, [...readJson(GLOBAL_KEY, []), message].slice(-MAX_MESSAGES));
 
     if (Api.apiCreateGlobalMessage && Api.hasConfiguredApiUrl()) {
       try {
-        const result = await Api.apiCreateGlobalMessage(Auth.token(), cleanText);
+        const result = await Api.apiCreateGlobalMessage(Auth.token(), cleanText || "Imagen", media);
         const saved = result.message || message;
         writeJson(GLOBAL_KEY, [...readJson(GLOBAL_KEY, []).filter(item => item.messageId !== message.messageId && item.messageId !== saved.messageId), saved].slice(-MAX_MESSAGES));
         return saved;
@@ -135,14 +138,14 @@ const Chat = (() => {
     return readJson(PRIVATE_KEY, {})[cid] || [];
   }
 
-  async function sendPrivateMessage(peer, text) {
+  async function sendPrivateMessage(peer, text, media = {}) {
     const user = currentUser();
     if (!user) throw new Error("Debes iniciar sesion para chatear.");
     const peerId = String(peer.userId || peer.username || "");
     if (!peerId) throw new Error("No se encontro el usuario destino.");
     if (peerId === safeUserId(user)) throw new Error("No puedes chatear contigo mismo.");
     const cleanText = normalizeText(text);
-    if (!cleanText) throw new Error("No puedes enviar mensajes vacios.");
+    if (!cleanText && !media.mediaUrl) throw new Error("No puedes enviar mensajes vacios.");
     if (Date.now() - lastSendAt < SEND_COOLDOWN_MS) throw new Error("Espera un momento antes de enviar otro mensaje.");
     lastSendAt = Date.now();
 
@@ -154,7 +157,9 @@ const Chat = (() => {
       fromUsername: user.username,
       toUserId: peerId,
       toUsername: peer.username || peerId,
-      text: cleanText,
+      text: cleanText || "Imagen",
+      mediaUrl: media.mediaUrl || "",
+      mediaType: media.mediaType || "",
       createdAt: new Date().toISOString(),
       status: "Enviando..."
     };
@@ -164,7 +169,7 @@ const Chat = (() => {
 
     if (Api.apiCreatePrivateMessage && Api.hasConfiguredApiUrl()) {
       try {
-        const result = await Api.apiCreatePrivateMessage(Auth.token(), peerId, cleanText);
+        const result = await Api.apiCreatePrivateMessage(Auth.token(), peerId, cleanText || "Imagen", media);
         replacePrivateMessage(message.conversationId, message.messageId, { ...(result.message || message), status: "Mensaje enviado" });
         return result.message || message;
       } catch (error) {
@@ -196,6 +201,7 @@ const Chat = (() => {
             <a href="#/profile/${encodeURIComponent(message.fromUserId || message.fromUsername)}">@${UI.escapeHTML(message.fromUsername || "usuario")}</a>
             <span>${UI.formatDate(message.createdAt)}</span>
           </div>
+          ${message.mediaType === "image" && message.mediaUrl ? `<a href="${UI.escapeHTML(message.mediaUrl)}" target="_blank" rel="noopener"><img class="chat-image" src="${UI.escapeHTML(message.mediaUrl)}" alt="Imagen enviada por ${UI.escapeHTML(message.fromUsername || "usuario")}"></a>` : ""}
           <p>${UI.escapeHTML(message.text)}</p>
           ${message.status ? `<small>${UI.escapeHTML(message.status)}</small>` : ""}
         </div>
@@ -216,7 +222,12 @@ const Chat = (() => {
           <div id="chatMessages" class="chat-messages">${UI.skeletonPosts(1)}</div>
           <form id="globalChatForm" class="chat-compose">
             <input name="message" maxlength="700" autocomplete="off" placeholder="Escribe un mensaje para la comunidad..." />
+            <label class="chat-image-button" title="Adjuntar imagen">
+              <input type="file" name="image" accept="image/*" />
+              Imagen
+            </label>
             <button class="warning-btn" type="submit">Enviar</button>
+            <div class="chat-image-preview hidden" data-chat-image-preview></div>
           </form>
         </section>
       </div>
@@ -246,8 +257,10 @@ const Chat = (() => {
       const button = form.querySelector("button");
       try {
         UI.setLoading(button, true, "Enviando...");
-        await sendGlobalMessage(form.message.value);
+        const media = await prepareImageAttachment(form);
+        await sendGlobalMessage(form.message.value, media);
         form.reset();
+        clearImagePreview(form);
         await refreshGlobalMessages(true);
         markRead("global", "main");
       } catch (error) {
@@ -256,6 +269,7 @@ const Chat = (() => {
         UI.setLoading(button, false);
       }
     });
+    bindImagePreview(form);
   }
 
   async function renderPrivate(peerId) {
@@ -281,7 +295,12 @@ const Chat = (() => {
           <div id="chatMessages" class="chat-messages">${UI.skeletonPosts(1)}</div>
           <form id="privateChatForm" class="chat-compose">
             <input name="message" maxlength="700" autocomplete="off" placeholder="Escribe un mensaje privado..." />
+            <label class="chat-image-button" title="Adjuntar imagen">
+              <input type="file" name="image" accept="image/*" />
+              Imagen
+            </label>
             <button class="warning-btn" type="submit">Enviar</button>
+            <div class="chat-image-preview hidden" data-chat-image-preview></div>
           </form>
         </section>
       </div>
@@ -343,8 +362,10 @@ const Chat = (() => {
       const button = form.querySelector("button");
       try {
         UI.setLoading(button, true, "Enviando...");
-        await sendPrivateMessage(peer, form.message.value);
+        const media = await prepareImageAttachment(form);
+        await sendPrivateMessage(peer, form.message.value, media);
         form.reset();
+        clearImagePreview(form);
         await refreshPrivateMessages(peer, true);
         markRead("private", peer.userId);
       } catch (error) {
@@ -353,6 +374,80 @@ const Chat = (() => {
       } finally {
         UI.setLoading(button, false);
       }
+    });
+    bindImagePreview(form);
+  }
+
+  function bindImagePreview(form) {
+    if (!form || form.dataset.imagePreviewBound === "true") return;
+    form.dataset.imagePreviewBound = "true";
+    form.image?.addEventListener("change", () => {
+      const file = form.image.files?.[0];
+      const preview = form.querySelector("[data-chat-image-preview]");
+      if (!preview) return;
+      if (!file) return clearImagePreview(form);
+      const validation = validateImage(file);
+      if (!validation.allowed) {
+        UI.toast(validation.message, "warning");
+        form.image.value = "";
+        clearImagePreview(form);
+        return;
+      }
+      const url = URL.createObjectURL(file);
+      preview.classList.remove("hidden");
+      preview.innerHTML = `
+        <img src="${url}" alt="Vista previa de imagen">
+        <button type="button" class="mini-btn" data-remove-chat-image>Quitar</button>
+      `;
+      preview.querySelector("[data-remove-chat-image]")?.addEventListener("click", () => {
+        URL.revokeObjectURL(url);
+        form.image.value = "";
+        clearImagePreview(form);
+      });
+    });
+  }
+
+  async function prepareImageAttachment(form) {
+    const file = form?.image?.files?.[0];
+    if (!file) return {};
+    const validation = validateImage(file);
+    if (!validation.allowed) throw new Error(validation.message);
+    if (Api.hasConfiguredApiUrl()) {
+      const uploaded = await Api.apiUploadMedia(Auth.token(), {
+        name: file.name,
+        mimeType: file.type,
+        mediaType: "image",
+        size: file.size,
+        content: await readFileAsBase64(file)
+      });
+      return { mediaUrl: uploaded.mediaUrl, mediaType: "image" };
+    }
+    return { mediaUrl: await readFileAsDataUrl(file), mediaType: "image" };
+  }
+
+  function validateImage(file) {
+    if (!file.type.startsWith("image/")) return { allowed: false, message: "Solo puedes enviar imagenes validas." };
+    if (file.size > MAX_CHAT_IMAGE_BYTES) return { allowed: false, message: "La imagen del chat no puede superar 4 MB." };
+    return { allowed: true };
+  }
+
+  function clearImagePreview(form) {
+    const preview = form?.querySelector("[data-chat-image-preview]");
+    if (!preview) return;
+    preview.classList.add("hidden");
+    preview.innerHTML = "";
+  }
+
+  function readFileAsBase64(file) {
+    return readFileAsDataUrl(file).then(value => String(value).split(",")[1] || "");
+  }
+
+  function readFileAsDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = () => reject(new Error("No se pudo leer la imagen."));
+      reader.readAsDataURL(file);
     });
   }
 

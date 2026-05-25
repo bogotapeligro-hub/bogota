@@ -4,6 +4,7 @@ const Feed = (() => {
       ["Inicio", "#/feed"],
       ["Publicar", "#/create-post"],
       ["Chat", "#/chat"],
+      ["Mapa", "#/mapa"],
       ["¿Quieres jugar?", "#/casino"],
       ["Tendencias", "#/feed?tag=tendencias"],
       ["Manifestaciones", "#/feed?cat=Manifestacion"],
@@ -55,6 +56,7 @@ const Feed = (() => {
   }
 
   async function render() {
+    const filters = parseHashQuery();
     UI.renderApp(`
       <div class="feed-layout">
         ${sidebar("Inicio")}
@@ -64,6 +66,7 @@ const Feed = (() => {
             <h1>Reportes ciudadanos y alertas urbanas</h1>
             <p>Comparte informacion de interes publico con responsabilidad. Evita datos personales, acusaciones sin evidencia y contenido prohibido.</p>
           </div>
+          ${renderFeedTools(filters)}
           <div id="feedPosts">${UI.skeletonPosts(4)}</div>
         </section>
         <aside class="right-sidebar"><section class="trend-card"><h3>Cargando...</h3></section></aside>
@@ -77,9 +80,11 @@ const Feed = (() => {
         .filter((post) => post.status === "active")
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       let posts = allPosts;
-      const { cat, tag } = parseHashQuery();
+      const { cat, tag, loc, sort } = filters;
       if (cat) posts = posts.filter((post) => post.category === cat);
       if (tag) posts = posts.filter((post) => Posts.parseTags(post.tags).map((x) => x.toLowerCase()).includes(tag.toLowerCase()));
+      if (loc) posts = posts.filter((post) => String(post.location || "").toLowerCase().includes(loc.toLowerCase()));
+      posts = sortPosts(posts, sort);
 
       const layout = document.querySelector(".feed-layout");
       const feedPosts = document.getElementById("feedPosts");
@@ -89,9 +94,10 @@ const Feed = (() => {
       layout.insertAdjacentHTML("beforeend", rightbar(allPosts));
       feedPosts.innerHTML = posts.length
         ? posts.map((post) => Posts.card(post)).join("")
-        : UI.emptyState("No hay publicaciones", cat || tag ? "No hay reportes activos con ese filtro." : "Todavia no hay publicaciones registradas en la base de datos.", `<a class="warning-btn inline-btn" href="#/create-post">Crear publicacion</a>`);
+        : UI.emptyState("No hay publicaciones", cat || tag || loc ? "No hay reportes activos con ese filtro." : "Todavia no hay publicaciones registradas en la base de datos.", `<a class="warning-btn inline-btn" href="#/create-post">Crear publicacion</a>`);
 
       bindFeedActions();
+      bindFeedFilters();
     } catch (error) {
       const feedPosts = document.getElementById("feedPosts");
       if (feedPosts) {
@@ -105,7 +111,63 @@ const Feed = (() => {
   function parseHashQuery() {
     const [, query = ""] = location.hash.split("?");
     const params = new URLSearchParams(query);
-    return { cat: params.get("cat"), tag: params.get("tag") };
+    return { cat: params.get("cat"), tag: params.get("tag"), loc: params.get("loc"), sort: params.get("sort") || "recent" };
+  }
+
+  function renderFeedTools(filters = {}) {
+    const option = (value, label, selected) => `<option value="${UI.escapeHTML(value)}" ${value === selected ? "selected" : ""}>${UI.escapeHTML(label)}</option>`;
+    return `
+      <section class="feed-tools" aria-label="Filtros de publicaciones">
+        <div class="feed-tools-row">
+          <label>
+            <span>Localidad</span>
+            <select id="feedLocalityFilter">
+              ${option("", "Todas", filters.loc || "")}
+              ${APP_CONFIG.localities.map(locality => option(locality, locality, filters.loc || "")).join("")}
+            </select>
+          </label>
+          <label>
+            <span>Categoria</span>
+            <select id="feedCategoryFilter">
+              ${option("", "Todas", filters.cat || "")}
+              ${APP_CONFIG.categories.map(category => option(category, category, filters.cat || "")).join("")}
+            </select>
+          </label>
+          <label>
+            <span>Orden</span>
+            <select id="feedSortFilter">
+              ${option("recent", "Mas recientes", filters.sort || "recent")}
+              ${option("commented", "Mas comentados", filters.sort || "recent")}
+              ${option("popular", "Mas reaccionados", filters.sort || "recent")}
+            </select>
+          </label>
+          <a class="ghost-btn feed-map-link" href="#/mapa">Ver mapa</a>
+        </div>
+      </section>
+    `;
+  }
+
+  function sortPosts(posts, sort = "recent") {
+    const list = [...posts];
+    if (sort === "commented") return list.sort((a, b) => Number(b.commentCount || 0) - Number(a.commentCount || 0) || new Date(b.createdAt) - new Date(a.createdAt));
+    if (sort === "popular") return list.sort((a, b) => Number(b.reactionCount || 0) - Number(a.reactionCount || 0) || new Date(b.createdAt) - new Date(a.createdAt));
+    return list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  }
+
+  function bindFeedFilters() {
+    const update = () => {
+      const params = new URLSearchParams();
+      const loc = document.getElementById("feedLocalityFilter")?.value || "";
+      const cat = document.getElementById("feedCategoryFilter")?.value || "";
+      const sort = document.getElementById("feedSortFilter")?.value || "recent";
+      if (loc) params.set("loc", loc);
+      if (cat) params.set("cat", cat);
+      if (sort && sort !== "recent") params.set("sort", sort);
+      location.hash = `#/feed${params.toString() ? `?${params}` : ""}`;
+    };
+    ["feedLocalityFilter", "feedCategoryFilter", "feedSortFilter"].forEach(id => {
+      document.getElementById(id)?.addEventListener("change", update);
+    });
   }
 
   function bindFeedActions() {
@@ -132,5 +194,5 @@ const Feed = (() => {
     if (typeof Chat !== "undefined") Chat.updateBadges?.();
   }
 
-  return { render, sidebar, rightbar, bindFeedActions };
+  return { render, sidebar, rightbar, bindFeedActions, parseHashQuery, sortPosts };
 })();
