@@ -1,0 +1,163 @@
+<div id="screen-menu" class="screen active">
+  <div class="scanlines"></div>
+  <div class="menu-bg-glow"></div>
+
+  <div class="menu-content">
+    <div class="logo-wrap">
+      <div class="logo-sub">★ CASINO ARCADE ★</div>
+      <h1 class="logo-title">REVÓLVER<br><span>DE LA SUERTE</span></h1>
+      <div class="logo-tagline">¿Tienes la suerte del diablo?</div>
+    </div>
+
+    <div class="menu-revolver-wrap">
+      <canvas id="canvas-menu" width="340" height="260"></canvas>
+    </div>
+
+    <div class="coin-display" id="menu-coins">
+      <span class="coin-icon">🪙</span>
+      <span id="coin-count">5</span> monedas
+    </div>
+
+    <div class="bet-section">
+      <label class="bet-label">APUESTA</label>
+      <div class="bet-controls">
+        <button class="bet-btn" onclick="RevolverGame.changeBet(-1)">−</button>
+        <span id="bet-amount" class="bet-value">1</span>
+        <button class="bet-btn" onclick="RevolverGame.changeBet(1)">+</button>
+      </div>
+    </div>
+
+    <div class="menu-buttons">
+      <button class="btn-primary" onclick="RevolverGame.startGame('bot')">
+        <span class="btn-icon">🤖</span> VS BOT
+      </button>
+      <button class="btn-secondary" onclick="RevolverGame.showOnlineModal()">
+        <span class="btn-icon">👥</span> VS JUGADOR
+        <span class="badge-soon">ONLINE</span>
+      </button>
+      <button class="btn-ghost" onclick="RevolverGame.exitToCasino()">🏠 SALIR AL CASINO</button>
+    </div>
+
+    <div class="menu-rules-btn" onclick="RevolverGame.toggleRules()">📜 Ver reglas</div>
+    <div id="rules-panel" class="rules-panel hidden">
+      <h3>REGLAS RÁPIDAS</h3>
+      <p>🎲 Juega <b>Piedra, Papel o Tijera</b> para decidir quién dispara.</p>
+      <p>🔫 El ganador elige: <b>dispararse</b> o <b>disparar al rival</b>.</p>
+      <p>💥 Bala real → pierde una parte.</p>
+      <p>💨 Bala falsa al dispararte → <b>¡turno extra!</b></p>
+      <p>☠️ Perder dedos y cabeza = eliminado.</p>
+      <p>🏆 El último en pie gana las monedas.</p>
+    </div>
+  </div>
+</div>
+
+<div id="screen-game" class="screen">
+  <div class="scanlines"></div>
+
+  <div class="hud-top">
+    <div class="hud-player" id="hud-player">
+      <div class="hud-name">TÚ</div>
+      <div class="lives-display" id="player-lives"></div>
+    </div>
+    <div class="hud-center">
+      <div class="coin-mini">🪙 <span id="game-coins">5</span></div>
+      <div class="bullet-counter">
+        <span class="bullet-dot" id="b0"></span>
+        <span class="bullet-dot" id="b1"></span>
+        <span class="bullet-dot" id="b2"></span>
+        <span class="bullet-dot" id="b3"></span>
+        <span class="bullet-dot" id="b4"></span>
+        <span class="bullet-dot" id="b5"></span>
+      </div>
+    </div>
+    <div class="hud-player" id="hud-bot">
+      <div class="hud-name" id="rival-label">BOT</div>
+      <div class="lives-display" id="bot-lives"></div>
+    </div>
+  </div>
+
+  <div class="arena">
+    <canvas id="canvas-game" width="400" height="300"></canvas>
+    <div class="status-overlay" id="status-overlay">
+      <div class="status-text" id="status-text">Cargando tambor…</div>
+      <div class="status-sub" id="status-sub"></div>
+    </div>
+    <div class="shoot-flash" id="shoot-flash"></div>
+  </div>
+
+  <div class="action-panel" id="panel-ppt">
+    <div class="panel-title">⚡ PIEDRA · PAPEL · TIJERA</div>
+    <div class="ppt-buttons">
+      <button class="ppt-btn" onclick="RevolverGame.choosePPT('rock')" id="btn-rock">
+        <span class="ppt-emoji">🪨</span>
+        <span class="ppt-label">PIEDRA</span>
+      </button>
+      <button class="ppt-btn" onclick="RevolverGame.choosePPT('paper')" id="btn-paper">
+        <span class="ppt-emoji">📄</span>
+        <span class="ppt-label">PAPEL</span>
+      </button>
+      <button class="ppt-btn" onclick="RevolverGame.choosePPT('scissors')" id="btn-scissors">
+        <span class="ppt-emoji">✂️</span>
+        <span class="ppt-label">TIJERA</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="action-panel hidden" id="panel-shoot">
+    <div class="panel-title" id="shoot-panel-title">🎯 ELIGE TU DISPARO</div>
+    <div class="shoot-buttons">
+      <button class="shoot-btn shoot-self" onclick="RevolverGame.chooseShoot('self')" id="btn-self">
+        <span class="shoot-emoji">🔫</span>
+        <span class="shoot-label">DISPARARME</span>
+        <span class="shoot-desc">Riesgo = turno extra</span>
+      </button>
+      <button class="shoot-btn shoot-enemy" onclick="RevolverGame.chooseShoot('enemy')" id="btn-enemy">
+        <span class="shoot-emoji">💀</span>
+        <span class="shoot-label">DISPARAR RIVAL</span>
+        <span class="shoot-desc">Directo al enemigo</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="action-panel hidden" id="panel-wait">
+    <div class="panel-title" id="wait-title">⏳ PROCESANDO…</div>
+    <div class="wait-animation"><div class="spinner"></div></div>
+  </div>
+
+  <button class="btn-back" onclick="RevolverGame.exitToCasino()">← Salir al casino</button>
+</div>
+
+<div id="screen-end" class="screen">
+  <div class="scanlines"></div>
+  <div class="end-content">
+    <div class="end-result-icon" id="end-icon">🏆</div>
+    <h2 class="end-title" id="end-title">¡GANASTE!</h2>
+    <div class="end-subtitle" id="end-subtitle">El bot cayó ante tu suerte</div>
+    <div class="end-coins" id="end-coins">+0 🪙</div>
+
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-val" id="stat-shots">0</div><div class="stat-lbl">DISPAROS</div></div>
+      <div class="stat-card"><div class="stat-val" id="stat-real">0</div><div class="stat-lbl">BALAS REALES</div></div>
+      <div class="stat-card"><div class="stat-val" id="stat-fake">0</div><div class="stat-lbl">BALAS FALSAS</div></div>
+      <div class="stat-card"><div class="stat-val" id="stat-extra">0</div><div class="stat-lbl">TURNOS EXTRA</div></div>
+    </div>
+
+    <div class="end-buttons">
+      <button class="btn-primary" onclick="RevolverGame.restartGame()">🔄 JUGAR DE NUEVO</button>
+      <button class="btn-ghost" onclick="RevolverGame.exitToCasino()">🏠 SALIR AL CASINO</button>
+    </div>
+  </div>
+</div>
+
+<div id="modal-online" class="modal-overlay hidden">
+  <div class="modal-box">
+    <div class="modal-icon">👥</div>
+    <h3 id="online-title">Buscando jugador...</h3>
+    <p id="online-text">Conectando con un rival registrado. Puedes cancelar la busqueda cuando quieras.</p>
+    <div class="wait-animation"><div class="spinner"></div></div>
+    <p class="modal-note" id="online-note">No se cobra moneda hasta encontrar rival.</p>
+    <button class="btn-primary" id="online-cancel-btn" onclick="RevolverGame.closeModal()">CANCELAR BUSQUEDA</button>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>

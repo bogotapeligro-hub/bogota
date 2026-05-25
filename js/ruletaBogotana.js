@@ -22,6 +22,7 @@ const gameState = {
   coinSettled: false,
   soundOn: false,
   botThinking: false,
+  runtimeId: 0,
   online: {
     enabled: false,
     matchId: "",
@@ -82,7 +83,7 @@ function bindRuletaButtons() {
     if (isDev) console.log(`Ruleta action: ${action}`);
 
     if (action === 'start') {
-      startGame(button.dataset.startMode);
+      startRuletaGame(button.dataset.startMode);
       return;
     }
     if (action === 'shoot-enemy') {
@@ -123,7 +124,8 @@ function showModeSelect() {
   hideScannerOverlay();
 }
 
-function startGame(mode) {
+function startRuletaGame(mode) {
+  gameState.runtimeId++;
   gameState.coinStakePaid = false;
   gameState.coinSettled = false;
 
@@ -141,6 +143,7 @@ function startGame(mode) {
   gameState.gameOver  = false;
   gameState.isRoundIntro = false;
   gameState.actionProcessing = false;
+  gameState.botThinking = false;
   gameState.statusMessage = 'Tu turno';
   gameState.coinSettled = false;
   gameState.log = [];
@@ -530,7 +533,8 @@ function hideRoundIntroOverlay() {
 function continueTurnAfterRoundIntro() {
   if (gameState.gameOver) return;
   if (!gameState.isRoundIntro && gameState.mode === 'bot' && gameState.currentTurn === 'enemy') {
-    window.setTimeout(doBotTurn, 350);
+    const runtimeId = gameState.runtimeId;
+    window.setTimeout(() => doBotTurn(runtimeId), 350);
   }
   if (gameState.online.enabled) saveOnlineState();
 }
@@ -601,7 +605,8 @@ function shoot(target) {
       renderGame();
       if (gameState.online.enabled) saveOnlineState();
       if (gameState.mode === 'bot' && currentWho === 'enemy') {
-        setTimeout(doBotTurn, 500);
+        const runtimeId = gameState.runtimeId;
+        setTimeout(() => doBotTurn(runtimeId), 500);
       }
       return;
     }
@@ -660,7 +665,8 @@ function nextTurn() {
     gameState.statusMessage = prev === (gameState.online.enabled ? gameState.online.mySlot : 'player') ? 'Tu turno' : 'Esperando accion del oponente...';
     renderGame();
     if (!gameState.isRoundIntro && gameState.mode === 'bot' && gameState.currentTurn === 'enemy') {
-      setTimeout(doBotTurn, 450);
+      const runtimeId = gameState.runtimeId;
+      setTimeout(() => doBotTurn(runtimeId), 450);
     }
     return;
   }
@@ -674,18 +680,21 @@ function nextTurn() {
   renderGame();
 
   if (!gameState.isRoundIntro && gameState.mode === 'bot' && gameState.currentTurn === 'enemy') {
-    setTimeout(doBotTurn, 500);
+    const runtimeId = gameState.runtimeId;
+    setTimeout(() => doBotTurn(runtimeId), 500);
   }
 }
 
 // ---------- BOT TURN ----------
-async function doBotTurn() {
+async function doBotTurn(runtimeId = gameState.runtimeId) {
+  if (!isCurrentRuletaRuntime(runtimeId)) return;
   if (gameState.gameOver || gameState.isRoundIntro || gameState.currentTurn !== 'enemy' || gameState.mode !== 'bot') return;
   gameState.botThinking = true;
   gameState.statusMessage = 'Esperando accion del oponente...';
   renderGame();
 
   await botThink(420 + Math.random() * 260);
+  if (!isCurrentRuletaRuntime(runtimeId)) return;
 
   const decision = botDecide(gameState);
 
@@ -698,8 +707,9 @@ async function doBotTurn() {
       nextTurn(); return;
     }
     await botThink(280);
+    if (!isCurrentRuletaRuntime(runtimeId)) return;
     gameState.botThinking = false;
-    doBotTurn();
+    doBotTurn(runtimeId);
     return;
   }
 
@@ -708,7 +718,11 @@ async function doBotTurn() {
   if (decision.action === 'shoot') {
     const target = decision.target === 'player' ? 'player' : 'self';
     shoot(target);
+    return;
   }
+
+  gameState.botThinking = false;
+  nextTurn();
 }
 
 // ---------- POWER USAGE ----------
@@ -837,11 +851,15 @@ function resetGame() {
 }
 
 function cleanupRuletaRuntime() {
+  gameState.runtimeId++;
   const shouldCancelQueue = gameState.online.isMatchmaking;
   stopCasinoMusic();
   stopOnlinePolling();
   window.clearTimeout(gameState.roundIntroTimer);
   window.clearTimeout(gameState.scannerOverlayTimer);
+  gameState.botThinking = false;
+  gameState.actionProcessing = false;
+  gameState.isRoundIntro = false;
   gameState.online.enabled = false;
   gameState.online.matchId = "";
   gameState.online.queueId = "";
@@ -856,11 +874,17 @@ function cleanupRuletaRuntime() {
   }
 }
 
+function isCurrentRuletaRuntime(runtimeId) {
+  return runtimeId === gameState.runtimeId &&
+    location.hash === '#/ruleta-bogotana' &&
+    Boolean(document.getElementById('ruletaRoot'));
+}
+
 // ---------- RENDER ----------
 function renderGame() {
   renderPlayerLabels();
   renderStatusBadges();
-  renderLives();
+  renderRuletaLives();
   renderRoundInfo();
   renderActionButtons();
   const powersOwner = gameState.online.enabled ? gameState.online.mySlot : gameState.currentTurn;
@@ -895,7 +919,7 @@ function renderStatusBadges() {
   });
 }
 
-function renderLives() {
+function renderRuletaLives() {
   ['player', 'enemy'].forEach(who => {
     const p   = gameState.players[who];
     const el  = document.getElementById(`lives-${who}`);
@@ -1062,7 +1086,7 @@ const RuletaBogotana = (() => ({
   init: initRuletaBogotana
 }))();
 
-window.startGame = startGame;
+window.startRuletaGame = startRuletaGame;
 window.shoot = shoot;
 window.resetGame = resetGame;
 window.toggleSound = toggleSound;

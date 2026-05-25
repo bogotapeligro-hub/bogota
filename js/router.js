@@ -6,8 +6,8 @@ const Router = (() => {
     "/create-post": { view: "create-post", auth: true, bind: () => Posts.bindCreatePost() },
     "/casino": { view: "casino", auth: true, bind: () => Casino.bind() },
     "/ruleta-bogotana": { view: "ruleta-bogotana", auth: true, bind: () => RuletaBogotana.init() },
-    "/dados-calle": { view: "dados-calle", auth: true, bind: () => CasinoDuelos.init("dados-calle") },
-    "/cartas-distrito": { view: "cartas-distrito", auth: true, bind: () => CasinoDuelos.init("cartas-distrito") },
+    "/revolver": { custom: () => renderLinkedGame("revolver", "css/revolver.css", "js/revolver.js", () => window.RevolverGame?.init()), auth: true },
+    "/cartas-distrito": { custom: () => renderLinkedGame("cartas-distrito", "css/cartas.css", "js/cartas.js", () => window.CartasDistrito?.init()), auth: true },
     "/profile": { custom: () => renderProfile(), auth: true },
     "/chat": { custom: () => Chat.renderGlobal(), auth: true },
     "/mapa": { custom: () => MapaReportes.render(), auth: true },
@@ -31,8 +31,7 @@ const Router = (() => {
     if (path.startsWith("/post/")) return renderPostDetail(decodeURIComponent(path.replace("/post/", "")));
     if (path.startsWith("/profile/")) return renderProfile(decodeURIComponent(path.replace("/profile/", "")));
     if (path.startsWith("/chat/")) return Chat.renderPrivate(decodeURIComponent(path.replace("/chat/", "")));
-    if (path.startsWith("/casino-game/")) return CasinoArcade.render(decodeURIComponent(path.replace("/casino-game/", "")));
-
+    if (!["/revolver", "/cartas-distrito"].includes(path)) clearGameStyles();
     const route = routes[path] || routes["/feed"];
     if (route.auth && !UI.requireSession()) return;
     if (route.moderation && !Auth.isAdminOrModerator()) {
@@ -45,6 +44,62 @@ const Router = (() => {
     const html = await UI.loadView(route.view);
     UI.renderApp(html);
     route.bind?.();
+  }
+
+  function clearGameStyles() {
+    window.RevolverGame?.destroy?.();
+    window.CartasDistrito?.destroy?.();
+    document.querySelectorAll(".modal-overlay, #no-coins-modal").forEach(el => el.remove());
+    document.body.style.overflow = "";
+    document.documentElement.style.overflow = "";
+    document.querySelectorAll("link[data-linked-game-style]").forEach(link => link.remove());
+  }
+
+  function loadStylesheet(href) {
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = href;
+    link.dataset.linkedGameStyle = "true";
+    document.head.appendChild(link);
+  }
+
+  function loadScriptOnce(src) {
+    return new Promise((resolve, reject) => {
+      const existing = document.querySelector(`script[data-game-script="${src}"]`);
+      if (existing) {
+        resolve();
+        return;
+      }
+      const script = document.createElement("script");
+      script.src = src;
+      script.dataset.gameScript = src;
+      script.onload = resolve;
+      script.onerror = () => reject(new Error("No se pudo cargar el juego."));
+      document.body.appendChild(script);
+    });
+  }
+
+  async function renderLinkedGame(view, cssHref, scriptSrc, init) {
+    if (!UI.requireSession()) return;
+    clearGameStyles();
+    if (typeof CasinoCoins !== "undefined") {
+      CasinoCoins.initializeCoins();
+      if (!CasinoCoins.canPlayCasinoGame()) {
+        CasinoCoins.showNoCoinsMessage();
+        location.hash = "#/casino";
+        return;
+      }
+    }
+    const html = await UI.loadView(view);
+    UI.renderApp(html);
+    loadStylesheet(cssHref);
+    try {
+      await loadScriptOnce(scriptSrc);
+      init?.();
+    } catch (error) {
+      UI.toast(error.message || "No se pudo cargar el juego.", "error");
+      location.hash = "#/casino";
+    }
   }
 
   async function renderPostDetail(postId) {

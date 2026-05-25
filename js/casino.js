@@ -11,8 +11,11 @@ const Casino = (() => {
       CasinoCoins.initializeCoins();
       CasinoCoins.renderCoinBalance(document);
       bindPlayButtons();
-      if (typeof CasinoMiniGames !== "undefined") CasinoMiniGames.render();
     }
+    document.querySelectorAll("[data-casino-play-button]").forEach(button => {
+      button.style.pointerEvents = "";
+      button.removeAttribute("inert");
+    });
   }
 
   function bindPlayButtons() {

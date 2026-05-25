@@ -36,7 +36,7 @@ const ALLOWED_USER_STATUSES = ["active", "blocked", "deleted"];
 const ALLOWED_CONTENT_STATUSES = ["active", "pending", "hidden", "removed", "reviewed"];
 const ALLOWED_REPORT_STATUSES = ["open", "reviewed", "dismissed"];
 const RULETA_POWER_IDS = ["manzana", "doble", "esposas", "escudo", "scanner", "cambio", "recarga", "curita"];
-const SHEETS_READY_CACHE_KEY = "bau_sheets_ready_v3";
+const SHEETS_READY_CACHE_KEY = "bau_sheets_ready_v4";
 
 function doGet() {
   return jsonResponse({ success: true, message: "Bogotá Alerta Urbana API activa", data: { ok: true } });
@@ -132,11 +132,11 @@ function setupSheets() {
 function ensureSheetsReady() {
   try {
     const cache = CacheService.getScriptCache();
-    if (cache.get(SHEETS_READY_CACHE_KEY) === "1") return;
     const ss = getDatabaseSpreadsheet();
     const missing = Object.keys(SHEETS).some(function(name) {
       return !ss.getSheetByName(name);
     });
+    if (cache.get(SHEETS_READY_CACHE_KEY) === "1" && !missing) return;
     if (missing) {
       setupSheets();
       return;
@@ -1013,7 +1013,7 @@ function expireOldRuletaQueue() {
 
 function normalizeCasinoGameType(value) {
   const gameType = clean(value).toLowerCase();
-  if (["dados-calle", "cartas-distrito"].indexOf(gameType) === -1) throw new Error("Juego de casino invalido.");
+  if (["revolver", "cartas-distrito"].indexOf(gameType) === -1) throw new Error("Juego de casino invalido.");
   return gameType;
 }
 
@@ -1057,7 +1057,7 @@ function createCasinoGameInitialState(gameType, player1, player2) {
 
 function casinoGameNames() {
   return {
-    "dados-calle": "Dados de la Calle",
+    "revolver": "Revolver de la Suerte",
     "cartas-distrito": "Cartas del Distrito"
   };
 }

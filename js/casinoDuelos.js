@@ -4,17 +4,6 @@ const CasinoDuelos = (() => {
   const COST = 1;
   const WIN_REWARD = 3;
   const configs = {
-    "dados-calle": {
-      title: "Dados de la Calle",
-      action: "Lanzar dados",
-      symbol: "🎲",
-      botName: "Bot de la Séptima",
-      resultLabel: value => value ? `${value.dice[0]} + ${value.dice[1]} = ${value.total}` : "--",
-      makePlay: () => {
-        const dice = [roll(1, 6), roll(1, 6)];
-        return { dice, total: dice[0] + dice[1] };
-      }
-    },
     "cartas-distrito": {
       title: "Cartas del Distrito",
       action: "Robar carta",

@@ -1302,7 +1302,7 @@ html, body {
 }
 
 /* ============================================================
-   DUELOS DE CASINO: Dados de la Calle / Cartas del Distrito
+   DUELOS DE CASINO: Revolver / Cartas del Distrito
    ============================================================ */
 .duelo-root {
   min-height: calc(100vh - var(--topbar-height, 74px));
