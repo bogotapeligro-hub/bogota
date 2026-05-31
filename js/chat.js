@@ -593,7 +593,7 @@ const Chat = (() => {
       return;
     }
     renderPrivateShell(localPeer);
-    refreshPrivateMessages(localPeer, true);
+    refreshPrivateMessages(localPeer, true).then(() => markRead("private", localPeer.userId));
     bindPrivateForm(localPeer);
     markRead("private", localPeer.userId);
     startPolling();

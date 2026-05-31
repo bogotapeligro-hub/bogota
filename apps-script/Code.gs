@@ -15,9 +15,9 @@ const SHEETS = {
   Reports: ["reportId", "targetType", "targetId", "userId", "reason", "details", "createdAt", "status"],
   Sessions: ["sessionId", "userId", "tokenHash", "createdAt", "expiresAt", "active"],
   AuditLog: ["logId", "userId", "action", "targetType", "targetId", "details", "createdAt"],
-  RuletaQueue: ["queueId", "userId", "username", "status", "matchId", "createdAt", "updatedAt"],
+  RuletaQueue: ["queueId", "gameId", "userId", "username", "avatar", "status", "matchId", "createdAt", "updatedAt", "lastSeen", "isOnline"],
   RuletaMatches: ["matchId", "status", "player1Id", "player1Username", "player2Id", "player2Username", "stateJson", "createdAt", "updatedAt"],
-  CasinoGameQueue: ["queueId", "gameType", "userId", "username", "status", "matchId", "createdAt", "updatedAt"],
+  CasinoGameQueue: ["queueId", "gameType", "userId", "username", "avatar", "status", "matchId", "createdAt", "updatedAt", "lastSeen", "isOnline"],
   CasinoGameMatches: ["matchId", "gameType", "status", "player1Id", "player1Username", "player2Id", "player2Username", "stateJson", "createdAt", "updatedAt"],
   ChatMessages: ["messageId", "scope", "conversationId", "fromUserId", "fromUsername", "toUserId", "toUsername", "text", "mediaUrl", "mediaType", "createdAt", "readBy"]
 };
@@ -36,7 +36,9 @@ const ALLOWED_USER_STATUSES = ["active", "blocked", "deleted"];
 const ALLOWED_CONTENT_STATUSES = ["active", "pending", "hidden", "removed", "reviewed"];
 const ALLOWED_REPORT_STATUSES = ["open", "reviewed", "dismissed"];
 const RULETA_POWER_IDS = ["manzana", "doble", "esposas", "escudo", "scanner", "cambio", "recarga", "curita"];
-const SHEETS_READY_CACHE_KEY = "bau_sheets_ready_v5";
+const SHEETS_READY_CACHE_KEY = "bau_sheets_ready_v6";
+const MATCHMAKING_TIMEOUT_MS = 90 * 1000;
+const ACTIVE_MATCH_TIMEOUT_MS = 30 * 60 * 1000;
 
 function doGet() {
   return jsonResponse({ success: true, message: "Bogotá Alerta Urbana API activa", data: { ok: true } });
@@ -137,8 +139,13 @@ function ensureSheetsReady() {
     const missing = Object.keys(SHEETS).some(function(name) {
       return !ss.getSheetByName(name);
     });
-    if (cache.get(SHEETS_READY_CACHE_KEY) === "1" && !missing) return;
-    if (missing) {
+    const missingHeaders = !missing && Object.keys(SHEETS).some(function(name) {
+      const sheet = ss.getSheetByName(name);
+      const headers = sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), 1)).getValues()[0];
+      return SHEETS[name].some(function(header) { return headers.indexOf(header) === -1; });
+    });
+    if (cache.get(SHEETS_READY_CACHE_KEY) === "1" && !missing && !missingHeaders) return;
+    if (missing || missingHeaders) {
       setupSheets();
       return;
     }
@@ -149,7 +156,12 @@ function ensureSheetsReady() {
     const missing = Object.keys(SHEETS).some(function(name) {
       return !ss.getSheetByName(name);
     });
-    if (missing) setupSheets();
+    const missingHeaders = !missing && Object.keys(SHEETS).some(function(name) {
+      const sheet = ss.getSheetByName(name);
+      const headers = sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), 1)).getValues()[0];
+      return SHEETS[name].some(function(header) { return headers.indexOf(header) === -1; });
+    });
+    if (missing || missingHeaders) setupSheets();
   }
 }
 
@@ -802,14 +814,15 @@ function ruletaJoinMatch(payload) {
   const queueSheet = getSheet("RuletaQueue");
   const queue = sheetToObjects(queueSheet);
   const ownWaitingIndex = queue.findIndex(function(q) {
-    return q.userId === user.userId && q.status === "waiting";
+    return q.userId === user.userId && isQueueSearching(q);
   });
   if (ownWaitingIndex >= 0) {
+    touchQueueRow(queueSheet, ownWaitingIndex + 2, "RuletaQueue");
     return { status: "waiting", matchId: "", queueId: queue[ownWaitingIndex].queueId };
   }
 
   const otherIndex = queue.findIndex(function(q) {
-    return q.userId !== user.userId && q.status === "waiting";
+    return q.userId !== user.userId && isQueueSearching(q) && isQueueFresh(q);
   });
 
   if (otherIndex >= 0) {
@@ -818,21 +831,26 @@ function ruletaJoinMatch(payload) {
       { userId: other.userId, username: other.username },
       { userId: user.userId, username: user.username }
     );
-    queueSheet.getRange(otherIndex + 2, SHEETS.RuletaQueue.indexOf("status") + 1).setValue("matched");
-    queueSheet.getRange(otherIndex + 2, SHEETS.RuletaQueue.indexOf("matchId") + 1).setValue(match.matchId);
-    queueSheet.getRange(otherIndex + 2, SHEETS.RuletaQueue.indexOf("updatedAt") + 1).setValue(now());
+    setCellByHeader(queueSheet, otherIndex + 2, "RuletaQueue", "status", "in_match");
+    setCellByHeader(queueSheet, otherIndex + 2, "RuletaQueue", "matchId", match.matchId);
+    setCellByHeader(queueSheet, otherIndex + 2, "RuletaQueue", "updatedAt", now());
+    setCellByHeader(queueSheet, otherIndex + 2, "RuletaQueue", "lastSeen", now());
     audit(user.userId, "ruletaJoinMatch", "ruleta", match.matchId, "Partida creada");
     return { status: "matched", match: publicRuletaMatch(match, user) };
   }
 
   const queueRow = {
     queueId: makeId("rq"),
+    gameId: "ruleta-bogotana",
     userId: user.userId,
     username: user.username,
-    status: "waiting",
+    avatar: clean(payload.avatar),
+    status: "searching",
     matchId: "",
     createdAt: now(),
-    updatedAt: now()
+    updatedAt: now(),
+    lastSeen: now(),
+    isOnline: true
   };
   appendObject(queueSheet, SHEETS.RuletaQueue, queueRow);
   audit(user.userId, "ruletaJoinQueue", "ruleta", queueRow.queueId, "Esperando rival");
@@ -877,9 +895,10 @@ function ruletaCancelMatchmaking(payload) {
   const sheet = getSheet("RuletaQueue");
   const queue = sheetToObjects(sheet);
   queue.forEach(function(q, idx) {
-    if (q.userId === user.userId && q.status === "waiting") {
-      sheet.getRange(idx + 2, SHEETS.RuletaQueue.indexOf("status") + 1).setValue("cancelled");
-      sheet.getRange(idx + 2, SHEETS.RuletaQueue.indexOf("updatedAt") + 1).setValue(now());
+    if (q.userId === user.userId && isQueueSearching(q)) {
+      setCellByHeader(sheet, idx + 2, "RuletaQueue", "status", "cancelled");
+      setCellByHeader(sheet, idx + 2, "RuletaQueue", "updatedAt", now());
+      setCellByHeader(sheet, idx + 2, "RuletaQueue", "isOnline", false);
     }
   });
   audit(user.userId, "ruletaCancelQueue", "ruleta", user.userId, "Cancelo busqueda");
@@ -898,14 +917,15 @@ function casinoJoinGameMatch(payload) {
   const queueSheet = getSheet("CasinoGameQueue");
   const queue = sheetToObjects(queueSheet);
   const ownWaitingIndex = queue.findIndex(function(q) {
-    return q.gameType === gameType && q.userId === user.userId && q.status === "waiting";
+    return q.gameType === gameType && q.userId === user.userId && isQueueSearching(q);
   });
   if (ownWaitingIndex >= 0) {
+    touchQueueRow(queueSheet, ownWaitingIndex + 2, "CasinoGameQueue");
     return { status: "waiting", matchId: "", queueId: queue[ownWaitingIndex].queueId };
   }
 
   const otherIndex = queue.findIndex(function(q) {
-    return q.gameType === gameType && q.userId !== user.userId && q.status === "waiting";
+    return q.gameType === gameType && q.userId !== user.userId && isQueueSearching(q) && isQueueFresh(q);
   });
 
   if (otherIndex >= 0) {
@@ -914,9 +934,10 @@ function casinoJoinGameMatch(payload) {
       { userId: other.userId, username: other.username },
       { userId: user.userId, username: user.username }
     );
-    queueSheet.getRange(otherIndex + 2, SHEETS.CasinoGameQueue.indexOf("status") + 1).setValue("matched");
-    queueSheet.getRange(otherIndex + 2, SHEETS.CasinoGameQueue.indexOf("matchId") + 1).setValue(match.matchId);
-    queueSheet.getRange(otherIndex + 2, SHEETS.CasinoGameQueue.indexOf("updatedAt") + 1).setValue(now());
+    setCellByHeader(queueSheet, otherIndex + 2, "CasinoGameQueue", "status", "in_match");
+    setCellByHeader(queueSheet, otherIndex + 2, "CasinoGameQueue", "matchId", match.matchId);
+    setCellByHeader(queueSheet, otherIndex + 2, "CasinoGameQueue", "updatedAt", now());
+    setCellByHeader(queueSheet, otherIndex + 2, "CasinoGameQueue", "lastSeen", now());
     audit(user.userId, "casinoJoinGameMatch", "casino", match.matchId, gameType);
     return { status: "matched", match: publicCasinoGameMatch(match, user) };
   }
@@ -926,10 +947,13 @@ function casinoJoinGameMatch(payload) {
     gameType: gameType,
     userId: user.userId,
     username: user.username,
-    status: "waiting",
+    avatar: clean(payload.avatar),
+    status: "searching",
     matchId: "",
     createdAt: now(),
-    updatedAt: now()
+    updatedAt: now(),
+    lastSeen: now(),
+    isOnline: true
   };
   appendObject(queueSheet, SHEETS.CasinoGameQueue, queueRow);
   audit(user.userId, "casinoJoinGameQueue", "casino", queueRow.queueId, gameType);
@@ -973,9 +997,10 @@ function casinoCancelGameMatchmaking(payload) {
   const sheet = getSheet("CasinoGameQueue");
   const queue = sheetToObjects(sheet);
   queue.forEach(function(q, idx) {
-    if (q.gameType === gameType && q.userId === user.userId && q.status === "waiting") {
-      sheet.getRange(idx + 2, SHEETS.CasinoGameQueue.indexOf("status") + 1).setValue("cancelled");
-      sheet.getRange(idx + 2, SHEETS.CasinoGameQueue.indexOf("updatedAt") + 1).setValue(now());
+    if (q.gameType === gameType && q.userId === user.userId && isQueueSearching(q)) {
+      setCellByHeader(sheet, idx + 2, "CasinoGameQueue", "status", "cancelled");
+      setCellByHeader(sheet, idx + 2, "CasinoGameQueue", "updatedAt", now());
+      setCellByHeader(sheet, idx + 2, "CasinoGameQueue", "isOnline", false);
     }
   });
   audit(user.userId, "casinoCancelGameQueue", "casino", user.userId, gameType);
@@ -1037,7 +1062,7 @@ function getRuletaMatchById(matchId) {
 
 function findRuletaMatchForUser(userId) {
   return sheetToObjects(getSheet("RuletaMatches")).find(function(m) {
-    return m.status === "active" && (m.player1Id === userId || m.player2Id === userId);
+    return m.status === "active" && isActiveMatchFresh(m) && (m.player1Id === userId || m.player2Id === userId);
   });
 }
 
@@ -1060,18 +1085,19 @@ function publicRuletaMatch(match, user) {
 function expireOldRuletaQueue() {
   const sheet = getSheet("RuletaQueue");
   const queue = sheetToObjects(sheet);
-  const cutoff = Date.now() - 2 * 60 * 1000;
   queue.forEach(function(q, idx) {
-    if (q.status === "waiting" && new Date(q.updatedAt || q.createdAt).getTime() < cutoff) {
-      sheet.getRange(idx + 2, SHEETS.RuletaQueue.indexOf("status") + 1).setValue("expired");
-      sheet.getRange(idx + 2, SHEETS.RuletaQueue.indexOf("updatedAt") + 1).setValue(now());
+    if (isQueueSearching(q) && !isQueueFresh(q)) {
+      setCellByHeader(sheet, idx + 2, "RuletaQueue", "status", "expired");
+      setCellByHeader(sheet, idx + 2, "RuletaQueue", "updatedAt", now());
+      setCellByHeader(sheet, idx + 2, "RuletaQueue", "isOnline", false);
     }
   });
 }
 
 function normalizeCasinoGameType(value) {
   const gameType = clean(value).toLowerCase();
-  if (["revolver", "cartas-distrito"].indexOf(gameType) === -1) throw new Error("Juego de casino invalido.");
+  const allowed = ["revolver", "cartas-distrito", "poker-fichas", "dados", "fichas", "cartas", "ruleta-escopeta", "ruleta-rusa"];
+  if (allowed.indexOf(gameType) === -1) throw new Error("Juego de casino invalido.");
   return gameType;
 }
 
@@ -1116,7 +1142,13 @@ function createCasinoGameInitialState(gameType, player1, player2) {
 function casinoGameNames() {
   return {
     "revolver": "Revolver de la Suerte",
-    "cartas-distrito": "Cartas del Distrito"
+    "cartas-distrito": "Cartas del Distrito",
+    "poker-fichas": "Poker de Fichas",
+    "dados": "Dados",
+    "fichas": "Fichas",
+    "cartas": "Cartas",
+    "ruleta-escopeta": "Ruleta Escopeta",
+    "ruleta-rusa": "Ruleta Rusa"
   };
 }
 
@@ -1126,7 +1158,7 @@ function getCasinoGameMatchById(matchId) {
 
 function findCasinoGameMatchForUser(userId, gameType) {
   return sheetToObjects(getSheet("CasinoGameMatches")).find(function(m) {
-    return m.gameType === gameType && m.status === "active" && (m.player1Id === userId || m.player2Id === userId);
+    return m.gameType === gameType && m.status === "active" && isActiveMatchFresh(m) && (m.player1Id === userId || m.player2Id === userId);
   });
 }
 
@@ -1150,13 +1182,37 @@ function publicCasinoGameMatch(match, user) {
 function expireOldCasinoGameQueue() {
   const sheet = getSheet("CasinoGameQueue");
   const queue = sheetToObjects(sheet);
-  const cutoff = Date.now() - 2 * 60 * 1000;
   queue.forEach(function(q, idx) {
-    if (q.status === "waiting" && new Date(q.updatedAt || q.createdAt).getTime() < cutoff) {
-      sheet.getRange(idx + 2, SHEETS.CasinoGameQueue.indexOf("status") + 1).setValue("expired");
-      sheet.getRange(idx + 2, SHEETS.CasinoGameQueue.indexOf("updatedAt") + 1).setValue(now());
+    if (isQueueSearching(q) && !isQueueFresh(q)) {
+      setCellByHeader(sheet, idx + 2, "CasinoGameQueue", "status", "expired");
+      setCellByHeader(sheet, idx + 2, "CasinoGameQueue", "updatedAt", now());
+      setCellByHeader(sheet, idx + 2, "CasinoGameQueue", "isOnline", false);
     }
   });
+}
+
+function isQueueSearching(row) {
+  const status = String(row.status || "").toLowerCase();
+  return status === "searching" || status === "waiting";
+}
+
+function isQueueFresh(row) {
+  const rawDate = row.lastSeen || row.updatedAt || row.createdAt;
+  if (!rawDate) return false;
+  return Date.now() - new Date(rawDate).getTime() <= MATCHMAKING_TIMEOUT_MS;
+}
+
+function touchQueueRow(sheet, rowNumber, sheetName) {
+  setCellByHeader(sheet, rowNumber, sheetName, "status", "searching");
+  setCellByHeader(sheet, rowNumber, sheetName, "updatedAt", now());
+  setCellByHeader(sheet, rowNumber, sheetName, "lastSeen", now());
+  setCellByHeader(sheet, rowNumber, sheetName, "isOnline", true);
+}
+
+function isActiveMatchFresh(match) {
+  const rawDate = match.updatedAt || match.createdAt;
+  if (!rawDate) return false;
+  return Date.now() - new Date(rawDate).getTime() <= ACTIVE_MATCH_TIMEOUT_MS;
 }
 
 function requireUser(token) {

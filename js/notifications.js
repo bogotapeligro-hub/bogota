@@ -32,6 +32,7 @@ const Notifications = (() => {
   function saveRawAll(list) {
     localStorage.setItem(KEY, JSON.stringify(list.slice(0, MAX)));
     updateBadge();
+    refreshOpenPanel();
     window.dispatchEvent(new CustomEvent("bau-notifications-updated"));
   }
 
@@ -139,8 +140,8 @@ const Notifications = (() => {
   function renderBell() {
     const count = unreadCount();
     return `
-      <button class="notif-bell" id="notifBell" aria-label="Notificaciones">
-        !
+      <button class="notif-bell-btn" id="notifBell" aria-label="Notificaciones" title="Notificaciones">
+        <span class="notif-bell-icon" aria-hidden="true">&#128276;</span>
         <span class="notif-badge ${count > 0 ? "" : "hidden"}" data-notif-badge>${Math.min(count, 99)}</span>
       </button>
     `;
@@ -178,6 +179,30 @@ const Notifications = (() => {
     `;
   }
 
+  function bindPanelActions(panel) {
+    if (!panel) return;
+    panel.querySelector("#notifMarkAllRead")?.addEventListener("click", () => {
+      markAllAsRead();
+      panel.remove();
+    });
+    panel.querySelectorAll("[data-notif-id]").forEach(el => {
+      el.addEventListener("click", () => {
+        const id = el.dataset.notifId;
+        const link = el.dataset.notifLink;
+        markAsRead(id);
+        if (link) location.hash = link;
+        panel.remove();
+      });
+    });
+  }
+
+  function refreshOpenPanel() {
+    const panel = document.getElementById("notifPanel");
+    if (!panel) return;
+    panel.outerHTML = renderPanel();
+    bindPanelActions(document.getElementById("notifPanel"));
+  }
+
   function formatTimeAgo(isoString) {
     if (!isoString) return "";
     const diff = Date.now() - new Date(isoString).getTime();
@@ -197,7 +222,7 @@ const Notifications = (() => {
     document.addEventListener("click", (event) => {
       const bell = document.getElementById("notifBell");
       const panel = document.getElementById("notifPanel");
-      if (bell && (event.target.closest("#notifBell") || event.target.closest(".notif-bell"))) {
+      if (bell && (event.target.closest("#notifBell") || event.target.closest(".notif-bell") || event.target.closest(".notif-bell-btn"))) {
         event.stopPropagation();
         if (panel) {
           panel.remove();
@@ -205,20 +230,7 @@ const Notifications = (() => {
         }
         document.querySelector(".notif-panel")?.remove();
         bell.insertAdjacentHTML("afterend", renderPanel());
-        const newPanel = document.getElementById("notifPanel");
-        newPanel?.querySelector("#notifMarkAllRead")?.addEventListener("click", () => {
-          markAllAsRead();
-          newPanel.remove();
-        });
-        newPanel?.querySelectorAll("[data-notif-id]").forEach(el => {
-          el.addEventListener("click", () => {
-            const id = el.dataset.notifId;
-            const link = el.dataset.notifLink;
-            markAsRead(id);
-            if (link) location.hash = link;
-            newPanel.remove();
-          });
-        });
+        bindPanelActions(document.getElementById("notifPanel"));
       }
       if (panel && !event.target.closest(".notif-panel") && !event.target.closest("#notifBell")) panel.remove();
     });

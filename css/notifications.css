@@ -1,18 +1,33 @@
 .notif-bell-btn {
   position: relative;
-  background: none;
-  border: none;
-  font-size: 1.3rem;
+  z-index: 160;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,214,0,0.34);
+  color: #FFD600;
+  font-size: 1.12rem;
   cursor: pointer;
-  padding: 6px 8px;
-  border-radius: 8px;
-  transition: background 0.2s;
+  padding: 0;
+  border-radius: 999px;
+  transition: background 0.2s, border-color 0.2s, transform 0.2s;
   line-height: 1;
   font-family: inherit;
 }
 
 .notif-bell-btn:hover {
-  background: rgba(255,255,255,0.08);
+  background: rgba(255,214,0,0.13);
+  border-color: rgba(255,214,0,0.7);
+  transform: translateY(-1px);
+}
+
+.notif-bell-icon {
+  display: block;
+  line-height: 1;
 }
 
 .notif-badge {
@@ -44,7 +59,7 @@
   border: 1px solid #2a2a3e;
   border-radius: 16px;
   box-shadow: 0 16px 48px rgba(0,0,0,0.5);
-  z-index: 100;
+  z-index: 220;
   display: flex;
   flex-direction: column;
   overflow: hidden;

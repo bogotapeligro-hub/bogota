@@ -9,9 +9,9 @@ const Matchmaking = (() => {
   let _onStatus = null;
   let _onError = null;
 
-  function _cancelApiCall() {
-    if (!_gameId || !Api.hasConfiguredApiUrl()) return;
-    Api.apiCasinoCancelGameMatchmaking(Auth.token(), _gameId).catch(() => {});
+  function _cancelApiCall(gameId = _gameId) {
+    if (!gameId || !Api.hasConfiguredApiUrl()) return;
+    Api.apiCasinoCancelGameMatchmaking(Auth.token(), gameId).catch(() => {});
   }
 
   function _clear() {
@@ -88,8 +88,9 @@ const Matchmaking = (() => {
 
   function cancel() {
     const wasSearching = _isSearching;
+    const gameId = _gameId;
     _clear();
-    if (wasSearching) _cancelApiCall();
+    if (wasSearching) _cancelApiCall(gameId);
   }
 
   function leave() {
