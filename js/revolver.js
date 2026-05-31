@@ -56,9 +56,12 @@ const STATE = {
 
 const REV_ONLINE = {
   timer: null,
+  pollTimer: null,
   searching: false,
   matchId: "",
   mySlot: "player",
+  opponentId: "",
+  opponentUsername: "RIVAL",
 };
 
 /* ────────────────────────────────────────────────────────────────
@@ -434,6 +437,8 @@ function revExitToCasino() {
   }
   revStopMusic();
   revCancelOnlineSearch(false);
+  window.clearInterval(REV_ONLINE.pollTimer);
+  REV_ONLINE.pollTimer = null;
   stopGameLoop();
   stopMenuLoop();
   revUnlockCasinoNavigation();
@@ -524,6 +529,9 @@ function revStartGame(mode) {
 
   // Comenzar
   revStartMusic();
+  if (mode === 'online') {
+    revSaveOnlineState();
+  }
   setPhase('ppt');
   setTimeout(() => revSetStatus('Cargando tambor…', 'Mezclando suerte…'), 200);
   setTimeout(() => revSetStatus('¡Balas cargadas!', 'Juega Piedra, Papel o Tijera'), 1600);
@@ -531,58 +539,52 @@ function revStartGame(mode) {
 }
 
 async function revStartOnlineSearch() {
-  if (!UI.requireSession()) return;
+  if (REV_ONLINE.searching) return;
   revSyncWallet();
   if (STATE.coins < STATE.bet) {
     revShowToast('Monedas insuficientes', 'red');
     return;
   }
-  if (typeof Api === "undefined" || !Api.hasConfiguredApiUrl()) {
-    revShowToast('Configura Apps Script para buscar rival.', 'red');
-    return;
-  }
-  if (REV_ONLINE.searching) return;
-  REV_ONLINE.searching = true;
   document.getElementById('modal-online')?.classList.remove('hidden');
-  revSetOnlineModal('Buscando jugador...', 'Conectando con un rival registrado. Puedes cancelar la busqueda cuando quieras.', true);
-  await revPollOnlineMatch();
-  if (REV_ONLINE.searching) REV_ONLINE.timer = window.setInterval(revPollOnlineMatch, 1200);
-}
-
-async function revPollOnlineMatch() {
-  if (!REV_ONLINE.searching) return;
-  try {
-    const result = await Api.apiCasinoJoinGameMatch(Auth.token(), 'revolver');
-    if (result.status === 'matched' && result.match) {
-      revAcceptOnlineMatch(result.match);
+  revSetOnlineModal('Buscando jugador...', 'Conectando con un rival registrado.', true);
+  REV_ONLINE.searching = true;
+  Matchmaking.search('revolver', {
+    onStatus: (status) => {
+      if (status === 'waiting') {
+        revSetOnlineModal('Buscando jugador...', 'Esperando que otro jugador presione VS JUGADOR.', true);
+      } else if (status === 'matched') {
+        revSetOnlineModal('Jugador encontrado', 'Iniciando partida...', false);
+      }
+    },
+    onMatch: (data) => {
+      REV_ONLINE.matchId = data.matchId;
+      REV_ONLINE.mySlot = data.mySlot;
+      document.getElementById('modal-online')?.classList.add('hidden');
+      revShowToast('Rival conectado. Entrando a la partida.', 'green');
+      revStartGame('online');
+      revStartOnlinePolling();
+    },
+    onError: (msg) => {
+      revSetOnlineModal('Error', msg, false);
+      REV_ONLINE.searching = false;
     }
-  } catch (error) {
-    revCancelOnlineSearch(false);
-    revSetOnlineModal('No se pudo buscar rival', error.message || 'Intenta otra vez.', false);
-    document.getElementById('modal-online')?.classList.remove('hidden');
-  }
-}
-
-function revAcceptOnlineMatch(match) {
-  window.clearInterval(REV_ONLINE.timer);
-  REV_ONLINE.timer = null;
-  REV_ONLINE.searching = false;
-  REV_ONLINE.matchId = match.matchId;
-  REV_ONLINE.mySlot = match.mySlot || 'player';
-  document.getElementById('modal-online')?.classList.add('hidden');
-  revShowToast('Rival conectado. Entrando a la partida.', 'green');
-  revStartGame('online');
+  });
+  Matchmaking.connect().catch(() => {
+    if (REV_ONLINE.searching) {
+      REV_ONLINE.searching = false;
+      revSetOnlineModal('Error de conexion', 'Intenta otra vez.', false);
+    }
+  });
 }
 
 async function revCancelOnlineSearch(showToastMessage = true) {
-  window.clearInterval(REV_ONLINE.timer);
-  REV_ONLINE.timer = null;
   const wasSearching = REV_ONLINE.searching;
   REV_ONLINE.searching = false;
+  REV_ONLINE.matchId = "";
+  window.clearInterval(REV_ONLINE.pollTimer);
+  REV_ONLINE.pollTimer = null;
   document.getElementById('modal-online')?.classList.add('hidden');
-  if (wasSearching && typeof Api !== "undefined" && Api.hasConfiguredApiUrl()) {
-    try { await Api.apiCasinoCancelGameMatchmaking(Auth.token(), 'revolver'); } catch {}
-  }
+  Matchmaking.cancel();
   if (wasSearching && showToastMessage) revShowToast('Busqueda cancelada. No se cobro moneda.', 'yellow');
 }
 
@@ -593,8 +595,124 @@ function revSetOnlineModal(title, text, searching) {
   const buttonEl = document.getElementById('online-cancel-btn');
   if (titleEl) titleEl.textContent = title;
   if (textEl) textEl.textContent = text;
-  if (noteEl) noteEl.textContent = searching ? 'Esperando otro jugador...' : 'No se cobro ninguna moneda.';
+  if (noteEl) noteEl.textContent = searching ? 'No se cobra moneda hasta encontrar rival.' : 'No se cobro ninguna moneda.';
   if (buttonEl) buttonEl.textContent = searching ? 'CANCELAR BUSQUEDA' : 'CERRAR';
+}
+
+/* ────────────────────────────────────────────────────────────────
+   MODO ONLINE — SINCRONIZACIÓN
+──────────────────────────────────────────────────────────────── */
+async function revStartOnlinePolling() {
+  window.clearInterval(REV_ONLINE.pollTimer);
+  REV_ONLINE.pollTimer = window.setInterval(revPollOnlineGame, 800);
+}
+
+async function revPollOnlineGame() {
+  if (!REV_ONLINE.matchId || STATE.gameMode !== 'online') return;
+  try {
+    const result = await Api.apiCasinoGetGameMatch(Auth.token(), REV_ONLINE.matchId);
+    if (!result?.match?.state) return;
+    const s = result.match.state;
+    REV_ONLINE.opponentId = s.p2Id === Auth.user()?.userId ? s.p1Id : s.p2Id;
+    REV_ONLINE.opponentUsername = s.p2Id === Auth.user()?.userId ? (s.p1Username || 'RIVAL') : (s.p2Username || 'RIVAL');
+    document.getElementById('rival-label').textContent = REV_ONLINE.opponentUsername;
+
+    if (s.gameOver) {
+      window.clearInterval(REV_ONLINE.pollTimer);
+      REV_ONLINE.pollTimer = null;
+      return;
+    }
+
+    if (s.phase === 'ppt' && STATE.phase === 'ppt' && !STATE.pptLock) {
+      const mySlotKey = REV_ONLINE.mySlot === 'player' ? 'p1' : 'p2';
+      const oppSlotKey = REV_ONLINE.mySlot === 'player' ? 'p2' : 'p1';
+      const myChoice = STATE.playerPPT || s[mySlotKey + 'PPT'];
+      const oppChoice = s[oppSlotKey + 'PPT'];
+      if (myChoice && oppChoice) {
+        STATE.playerPPT = myChoice;
+        STATE.botPPT = oppChoice;
+        STATE.pptLock = true;
+        document.querySelectorAll('#panel-ppt .ppt-btn').forEach(b => b.disabled = true);
+        resolvePPT();
+      }
+    }
+
+    if (s.phase === 'shoot' && !STATE.shootLock) {
+      const myTurn = (REV_ONLINE.mySlot === 'player' ? s.playerTurn === 'p1' : s.playerTurn === 'p2');
+      if (myTurn) {
+        STATE.currentTurn = 'player';
+      } else {
+        STATE.currentTurn = 'bot';
+      }
+      if (STATE.phase !== 'shoot' && STATE.phase !== 'waiting') {
+        setPhase('shoot');
+      }
+    }
+
+    if (s.bulletChamber && s.bulletChamber.length > 0) {
+      STATE.bulletChamber = s.bulletChamber;
+      STATE.drumIndex = s.drumIndex || 0;
+    }
+
+    const mySlotKey = REV_ONLINE.mySlot === 'player' ? 'p1' : 'p2';
+    if (s[`${mySlotKey}Fingers`]) {
+      STATE.player.fingers = s[`${mySlotKey}Fingers`];
+      STATE.player.head = s[`${mySlotKey}Head`];
+    }
+    const oppSlotKey = REV_ONLINE.mySlot === 'player' ? 'p2' : 'p1';
+    if (s[`${oppSlotKey}Fingers`]) {
+      STATE.bot.fingers = s[`${oppSlotKey}Fingers`];
+      STATE.bot.head = s[`${oppSlotKey}Head`];
+    }
+
+    STATE.extraTurn = s.extraTurn || false;
+    STATE.extraTurnCount = s.extraTurnCount || 0;
+    STATE.drumIndex = s.drumIndex || 0;
+    renderRevolverLives();
+    updateBulletDots();
+  } catch (err) {
+    revShowToast('Error de sincronizacion con la partida.', 'red');
+  }
+}
+
+async function revSaveOnlineState() {
+  if (!REV_ONLINE.matchId || STATE.gameMode !== 'online') return;
+  const myId = Auth.user()?.userId;
+  const myUser = Auth.user();
+  const mySlotKey = REV_ONLINE.mySlot === 'player' ? 'p1' : 'p2';
+  const oppSlotKey = REV_ONLINE.mySlot === 'player' ? 'p2' : 'p1';
+  const state = {
+    p1Id: REV_ONLINE.mySlot === 'player' ? myId : REV_ONLINE.opponentId,
+    p2Id: REV_ONLINE.mySlot === 'player' ? REV_ONLINE.opponentId : myId,
+    p1Username: REV_ONLINE.mySlot === 'player' ? (myUser?.username || 'Jugador') : REV_ONLINE.opponentUsername,
+    p2Username: REV_ONLINE.mySlot === 'player' ? REV_ONLINE.opponentUsername : (myUser?.username || 'Jugador'),
+    p1Ready: true,
+    p2Ready: true,
+    p1PPT: REV_ONLINE.mySlot === 'player' ? STATE.playerPPT : STATE.botPPT,
+    p2PPT: REV_ONLINE.mySlot === 'player' ? STATE.botPPT : STATE.playerPPT,
+    pptWinner: STATE.pptWinner,
+    playerTurn: STATE.currentTurn === 'player' ? (REV_ONLINE.mySlot === 'player' ? 'p1' : 'p2') : (REV_ONLINE.mySlot === 'player' ? 'p2' : 'p1'),
+    phase: STATE.phase,
+    [mySlotKey + 'Fingers']: STATE.player.fingers,
+    [mySlotKey + 'Head']: STATE.player.head,
+    [oppSlotKey + 'Fingers']: STATE.bot.fingers,
+    [oppSlotKey + 'Head']: STATE.bot.head,
+    bulletChamber: STATE.bulletChamber,
+    drumIndex: STATE.drumIndex,
+    extraTurn: STATE.extraTurn,
+    extraTurnCount: STATE.extraTurnCount,
+    shotsTotal: STATE.stats.shots,
+    shotsReal: STATE.stats.real,
+    shotsFake: STATE.stats.fake,
+    gameOver: STATE.gameActive === false && (STATE.phase === 'result' || document.getElementById('screen-end')?.classList.contains('active')),
+    winner: null,
+    updatedAt: Date.now()
+  };
+  try {
+    await Api.apiCasinoSaveGameMatch(Auth.token(), REV_ONLINE.matchId, state);
+  } catch (err) {
+    revShowToast('Error al sincronizar la partida.', 'red');
+  }
 }
 
 function revUnlockCasinoNavigation() {
@@ -737,9 +855,13 @@ function setPhase(phase) {
     document.getElementById('panel-shoot').classList.remove('hidden');
     document.getElementById('btn-self').disabled   = !isPlayerTurn;
     document.getElementById('btn-enemy').disabled  = !isPlayerTurn;
-    if (!isPlayerTurn) {
+    if (!isPlayerTurn && STATE.gameMode !== 'online') {
       revSetStatus('El bot decide...', '');
       setTimeout(botShootDecision, 1000 + Math.random() * 800);
+    } else if (!isPlayerTurn && STATE.gameMode === 'online') {
+      revSetStatus('Esperando al rival...', '');
+      document.getElementById('btn-self').disabled = true;
+      document.getElementById('btn-enemy').disabled = true;
     } else {
       revSetStatus('TU TURNO — ELIGE', STATE.extraTurn ? '⚡ Turno extra activo' : '');
       document.getElementById('shoot-panel-title').textContent =
@@ -767,6 +889,13 @@ function choosePPT(choice) {
   });
   document.getElementById('btn-' + (choice === 'rock' ? 'rock' : choice === 'paper' ? 'paper' : 'scissors'))
     .classList.add('selected');
+
+  if (STATE.gameMode === 'online') {
+    STATE.botPPT = null;
+    revSetStatus('Esperando al rival…', '');
+    revSaveOnlineState();
+    return;
+  }
 
   revSetStatus('Esperando al bot…', '');
 
@@ -832,6 +961,7 @@ function chooseShoot(target) {
   disableShootButtons();
   executeShoot('player', target, () => {
     shootLockFn.unlock();
+    if (STATE.gameMode === 'online') revSaveOnlineState();
   });
 }
 
@@ -978,6 +1108,8 @@ function endGame(winner) {
   document.getElementById('stat-real').textContent   = STATE.stats.real;
   document.getElementById('stat-fake').textContent   = STATE.stats.fake;
   document.getElementById('stat-extra').textContent  = STATE.stats.extras;
+
+  if (STATE.gameMode === 'online') revSaveOnlineState();
 
   setTimeout(() => revShowScreen('screen-end'), 800);
 }
@@ -1157,6 +1289,8 @@ window.RevolverGame = {
   destroy: () => {
     revStopMusic();
     revCancelOnlineSearch(false);
+    window.clearInterval(REV_ONLINE.pollTimer);
+    REV_ONLINE.pollTimer = null;
     stopGameLoop();
     stopMenuLoop();
     revUnlockCasinoNavigation();

@@ -198,7 +198,7 @@ Se bloquea especialmente cualquier combinación de términos relacionados con me
 Mientras `js/config.js` tenga esta línea:
 
 ```js
-const API_URL = "PEGA_AQUI_TU_URL_DE_APPS_SCRIPT";
+const API_URL = "https://script.google.com/macros/s/AKfycbwGfSCwYliqFxmHws_Kcf9aiMsvaGU8vZ_UPZ3lEREtBqCgjCifC8nDaUfqNWXZfXPjqA/exec";
 ```
 
 el proyecto funciona en **modo mock** usando `localStorage`.
@@ -351,7 +351,7 @@ const password = "CAMBIA_ESTA_CLAVE_ADMIN";
 Ejemplo:
 
 ```js
-const API_URL = "https://script.google.com/macros/s/XXXXXXXXXXXX/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbwGfSCwYliqFxmHws_Kcf9aiMsvaGU8vZ_UPZ3lEREtBqCgjCifC8nDaUfqNWXZfXPjqA/exec";
 ```
 
 ---

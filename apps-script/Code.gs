@@ -9,7 +9,7 @@ const SPREADSHEET_ID = "1KUbVWF4I4WNRj0jIhQ-pOBdgDGMeyfFQa_UC7NZkgUc";
 
 const SHEETS = {
   Users: ["userId", "username", "passwordHash", "salt", "role", "status", "createdAt", "lastLoginAt", "ageConfirmed"],
-  Posts: ["postId", "userId", "username", "category", "title", "description", "location", "mediaUrl", "mediaType", "tags", "createdAt", "status", "moderationFlags", "reactionCount", "commentCount", "reportCount", "removedBy", "removedAt", "removeReason", "reviewedBy", "reviewedAt"],
+  Posts: ["postId", "userId", "username", "category", "title", "description", "location", "mediaUrl", "mediaType", "tags", "createdAt", "status", "moderationFlags", "reactionCount", "commentCount", "reportCount", "isSensitive", "blurFaces", "anonymous", "alertLevel", "source", "verificationStatus", "confirmCount", "doubtCount", "viewCount", "removedBy", "removedAt", "removeReason", "reviewedBy", "reviewedAt"],
   Comments: ["commentId", "postId", "userId", "username", "text", "createdAt", "status", "reportCount", "removedBy", "removedAt", "removeReason", "reviewedBy", "reviewedAt"],
   Reactions: ["reactionId", "targetType", "targetId", "userId", "reaction", "createdAt"],
   Reports: ["reportId", "targetType", "targetId", "userId", "reason", "details", "createdAt", "status"],
@@ -28,15 +28,15 @@ const MEDIA_FOLDER_ID = "1-m77wkfWBnl7YATQmyvXkvpQLGbyxSgq";
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const MAX_VIDEO_BYTES = 25 * 1024 * 1024;
 const DEFAULT_POST_STATUS = "active"; // Cambiar a "pending" si deseas revisión previa.
-const ALLOWED_CATEGORIES = ["Accidente", "Pelea", "Manifestación", "Movilidad", "Robo / inseguridad", "Problema en la calle", "Emergencia", "Otro"];
+const ALLOWED_CATEGORIES = ["Manifestacion", "Reporte ciudadano", "Incidente", "Pelea / contenido sensible", "Accidente", "Denuncia", "Alerta", "Evento", "Trafico", "Seguridad", "Comunidad", "Juego / entretenimiento", "Short", "Movilidad", "Emergencia", "Otro", "Pelea", "Manifestación", "Robo / inseguridad", "Problema en la calle"];
 const ALLOWED_REACTIONS = ["Me impacta", "Alerta", "Confirmo", "No confirmado", "Cuidado", "Apoyo"];
-const ALLOWED_REPORT_REASONS = ["Menores involucrados", "Contenido sexual", "Violencia contra menores", "Datos personales", "Amenaza o incitación", "Contenido falso", "Contenido demasiado gráfico", "Otro"];
+const ALLOWED_REPORT_REASONS = ["Violencia explicita", "Acoso", "Datos personales", "Menores de edad", "Contenido falso", "Amenazas", "Incitacion a violencia", "Spam", "Menores involucrados", "Contenido sexual", "Violencia contra menores", "Amenaza o incitación", "Contenido demasiado gráfico", "Otro"];
 const ALLOWED_ROLES = ["user", "moderator", "admin"];
 const ALLOWED_USER_STATUSES = ["active", "blocked", "deleted"];
 const ALLOWED_CONTENT_STATUSES = ["active", "pending", "hidden", "removed", "reviewed"];
 const ALLOWED_REPORT_STATUSES = ["open", "reviewed", "dismissed"];
 const RULETA_POWER_IDS = ["manzana", "doble", "esposas", "escudo", "scanner", "cambio", "recarga", "curita"];
-const SHEETS_READY_CACHE_KEY = "bau_sheets_ready_v4";
+const SHEETS_READY_CACHE_KEY = "bau_sheets_ready_v5";
 
 function doGet() {
   return jsonResponse({ success: true, message: "Bogotá Alerta Urbana API activa", data: { ok: true } });
@@ -277,7 +277,7 @@ function createPost(payload) {
 
   if (!title || title.length < 5) throw new Error("El título debe tener al menos 5 caracteres.");
   if (!description || description.length < 15) throw new Error("La descripción debe tener al menos 15 caracteres.");
-  if (ALLOWED_CATEGORIES.indexOf(category) === -1) throw new Error("Categoría inválida.");
+  if (!isAllowedPostCategory(category)) throw new Error("Categoría inválida.");
   if (!mediaUrl) mediaType = "none";
   if (mediaUrl && !mediaItems.length) throw new Error("La multimedia debe tener URLs https validas.");
   if (["image", "video", "mixed", "none"].indexOf(mediaType) === -1) throw new Error("Tipo de multimedia invalido.");
@@ -290,7 +290,16 @@ function createPost(payload) {
     postId: makeId("post"), userId: user.userId, username: user.username, category: category,
     title: title, description: description, location: location, mediaUrl: mediaUrl, mediaType: mediaType, tags: tags,
     createdAt: now(), status: clean(data.status) || DEFAULT_POST_STATUS,
-    moderationFlags: moderation.flags.join(" | "), reactionCount: 0, commentCount: 0, reportCount: 0
+    moderationFlags: moderation.flags.join(" | "), reactionCount: 0, commentCount: 0, reportCount: 0,
+    isSensitive: data.isSensitive === true || String(data.isSensitive) === "true" || isSensitivePostCategory(category),
+    blurFaces: data.blurFaces === true || String(data.blurFaces) === "true",
+    anonymous: data.anonymous === true || String(data.anonymous) === "true",
+    alertLevel: normalizeAlertLevel(data.alertLevel),
+    source: clean(data.source),
+    verificationStatus: "pending",
+    confirmCount: 0,
+    doubtCount: 0,
+    viewCount: 0
   };
   appendObject(getSheet("Posts"), SHEETS.Posts, post);
   audit(user.userId, "createPost", "post", post.postId, post.title);
@@ -501,7 +510,7 @@ function reportContent(payload) {
   const details = clean(payload.details);
 
   if (["post", "comment"].indexOf(targetType) === -1) throw new Error("Tipo de reporte inválido.");
-  if (ALLOWED_REPORT_REASONS.indexOf(reason) === -1) throw new Error("Motivo de reporte inválido.");
+  if (!isAllowedReportReason(reason)) throw new Error("Motivo de reporte inválido.");
 
   const report = { reportId: makeId("rep"), targetType: targetType, targetId: targetId, userId: user.userId, reason: reason, details: details, createdAt: now(), status: "open" };
   appendObject(getSheet("Reports"), SHEETS.Reports, report);
@@ -1232,6 +1241,25 @@ function normalizeContentStatus(value) {
   const status = String(value || "active").trim().toLowerCase();
   if (status === "reported") return "pending";
   return ALLOWED_CONTENT_STATUSES.indexOf(status) === -1 ? "active" : status;
+}
+
+function isAllowedPostCategory(category) {
+  const modern = ["Manifestacion", "Reporte ciudadano", "Incidente", "Pelea / contenido sensible", "Accidente", "Denuncia", "Alerta", "Evento", "Trafico", "Seguridad", "Comunidad", "Juego / entretenimiento", "Short", "Movilidad", "Emergencia", "Otro"];
+  return ALLOWED_CATEGORIES.indexOf(category) !== -1 || modern.indexOf(category) !== -1;
+}
+
+function isSensitivePostCategory(category) {
+  return ["Incidente", "Pelea / contenido sensible", "Accidente", "Denuncia", "Seguridad", "Emergencia", "Pelea"].indexOf(category) !== -1;
+}
+
+function normalizeAlertLevel(value) {
+  const level = clean(value);
+  return ["Bajo", "Medio", "Alto"].indexOf(level) === -1 ? "" : level;
+}
+
+function isAllowedReportReason(reason) {
+  const modern = ["Violencia explicita", "Acoso", "Datos personales", "Menores de edad", "Contenido falso", "Amenazas", "Incitacion a violencia", "Spam", "Otro"];
+  return ALLOWED_REPORT_REASONS.indexOf(reason) !== -1 || modern.indexOf(reason) !== -1;
 }
 
 function findRowById(sheetName, idColumn, id) {

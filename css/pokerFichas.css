@@ -157,6 +157,16 @@
 .pf-btn-primary:active { transform: translateY(0); }
 .pf-btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
 
+.pf-btn-secondary {
+  width: 100%; padding: 13px 24px;
+  background: transparent; color: var(--pf-text-muted);
+  border: 1px solid rgba(255,255,255,0.15); border-radius: var(--pf-radius);
+  font-family: var(--pf-font-display); font-size: 1.1rem; letter-spacing: 0.06em;
+  cursor: pointer; transition: all 0.2s ease;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+}
+.pf-btn-secondary:hover { border-color: rgba(255,255,255,0.3); color: var(--pf-text-main); }
+
 .pf-btn-ghost {
   width: 100%; padding: 13px 24px;
   background: transparent; color: var(--pf-text-muted);

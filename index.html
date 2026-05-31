@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Esto es Bogotá HP</title>
-  <meta name="description" content="Red social urbana para reportes ciudadanos de Bogotá: movilidad, emergencias, manifestaciones y situaciones de interés público." />
+  <title>Bogota Alerta Urbana</title>
+  <meta name="description" content="Red social urbana para reportes ciudadanos de Bogota: movilidad, emergencias, manifestaciones, alertas y situaciones de interes publico." />
   <link rel="icon" href="assets/logo.png" type="image/png" />
   <link rel="stylesheet" href="css/style.css" />
   <link rel="stylesheet" href="css/auth.css" />
@@ -21,17 +21,17 @@
   <div id="ageGateRoot"></div>
 
   <header class="topbar" id="topbar">
-    <button class="icon-btn mobile-only" id="menuToggle" aria-label="Abrir menú">☰</button>
-    <a class="brand" href="#/feed" aria-label="Bogotá Alerta Urbana">
-      <img src="assets/logo.png" alt="Logo Bogotá Alerta Urbana" />
-      <span>Bogotá <strong>HPTS</strong></span>
+    <button class="icon-btn mobile-only" id="menuToggle" aria-label="Abrir menu">Menu</button>
+    <a class="brand" href="#/feed" aria-label="Bogota Alerta Urbana">
+      <img src="assets/logo.png" alt="Logo Bogota Alerta Urbana" />
+      <span>Bogota <strong>Alerta Urbana</strong></span>
     </a>
     <nav class="top-actions">
       <button class="ghost-btn" id="rulesShortcut">Reglas</button>
       <button class="ghost-btn chat-shortcut" id="chatShortcut">Chat <span class="chat-badge hidden" id="topChatBadge">0</span></button>
-      <button class="ghost-btn" id="casinoShortcut">🎰 Jugar</button>
+      <button class="ghost-btn" id="casinoShortcut">Juegos</button>
       <button class="notif-bell-btn" id="notifBell" aria-label="Notificaciones">
-        🔔<span class="notif-badge hidden" data-notif-badge>0</span>
+        !<span class="notif-badge hidden" data-notif-badge>0</span>
       </button>
       <span class="role-badge hidden" id="roleBadge"></span>
       <button class="ghost-btn hidden" id="adminShortcut">Panel Admin</button>
@@ -43,17 +43,18 @@
   <div id="toastRoot" class="toast-root" aria-live="polite"></div>
   <main id="app" class="app-shell"></main>
 
-  <a href="#/create-post" class="floating-post-btn" id="floatingPostBtn" aria-label="Crear publicación">+</a>
+  <a href="#/create-post" class="floating-post-btn" id="floatingPostBtn" aria-label="Crear publicacion">+</a>
 
   <nav class="bottom-nav" id="bottomNav">
-    <a href="#/feed" class="bottom-nav-item" data-nav="feed">🏠<span>Inicio</span></a>
-    <a href="#/shorts" class="bottom-nav-item" data-nav="shorts">🎬<span>Shorts</span></a>
-    <a href="#/chat" class="bottom-nav-item" data-nav="chat">💬<span>Chat</span><span class="bottom-badge hidden" data-chat-badge>0</span></a>
-    <a href="#/casino" class="bottom-nav-item" data-nav="casino">🎰<span>Jugar</span></a>
-    <a href="#/profile" class="bottom-nav-item" data-nav="profile">👤<span>Perfil</span></a>
+    <a href="#/feed" class="bottom-nav-item" data-nav="feed">Inicio<span>Inicio</span></a>
+    <a href="#/shorts" class="bottom-nav-item" data-nav="shorts">Shorts<span>Shorts</span></a>
+    <a href="#/alertas" class="bottom-nav-item" data-nav="alertas">Alertas<span>Alertas</span></a>
+    <a href="#/chat" class="bottom-nav-item" data-nav="chat">Chat<span>Chat</span><span class="bottom-badge hidden" data-chat-badge>0</span></a>
+    <a href="#/profile" class="bottom-nav-item" data-nav="profile">Perfil<span>Perfil</span></a>
   </nav>
 
   <script src="js/config.js"></script>
+  <script src="js/matchmaking.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/moderation.js"></script>
   <script src="js/api.js"></script>
@@ -64,6 +65,7 @@
   <script src="js/chat.js"></script>
   <script src="js/posts.js"></script>
   <script src="js/feed.js"></script>
+  <script src="js/alerts.js"></script>
   <script src="js/mapaReportes.js"></script>
   <script src="js/admin.js"></script>
   <script src="js/casinoCoins.js"></script>
@@ -78,4 +80,3 @@
   <script src="js/router.js"></script>
 </body>
 </html>
-

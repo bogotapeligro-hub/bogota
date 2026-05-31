@@ -13,6 +13,7 @@ const Router = (() => {
     "/chat": { custom: () => renderChatList(), auth: true },
     "/chat-global": { custom: () => Chat.renderGlobal(), auth: true },
     "/shorts": { custom: () => Shorts.render(), auth: true },
+    "/alertas": { custom: () => Alerts.render(), auth: true },
     "/mapa": { custom: () => MapaReportes.render(), auth: true },
     "/rules": { view: "rules" },
     "/admin": { view: "admin", auth: true, moderation: true, bind: () => Admin.initAdminPanel() }
@@ -139,6 +140,9 @@ const Router = (() => {
       Reactions.bind(document);
       Posts.bindReportButtons(document);
       Posts.bindShareButtons(document);
+      Posts.bindSensitiveMedia(document);
+      Posts.bindVerificationButtons(document);
+      Posts.bindChatShareButtons(document);
       Posts.bindAdminInline(document);
       Comments.bindForm({
         onCreated: () => {
@@ -205,23 +209,28 @@ const Router = (() => {
       const stats = Profile.getStats();
       statsEl.querySelector("#statPosts").textContent = stats.posts || posts.length;
       statsEl.querySelector("#statReactions").textContent = stats.reactions || 0;
-      const coins = typeof CasinoCoins !== "undefined" ? CasinoCoins.getCoins() : 0;
-      statsEl.querySelector("#statCoins").textContent = coins;
+      statsEl.querySelector("#statReports").textContent = stats.reports || 0;
       statsEl.querySelector("#statGames").textContent = stats.games || 0;
     }
 
     if (!isViewingSelf) {
       document.getElementById("editProfileBtn")?.remove();
+    } else {
+      document.getElementById("profileMessageBtn")?.remove();
+      document.getElementById("profileFollowBtn")?.remove();
+      document.getElementById("profileReportBtn")?.remove();
     }
 
     const activePosts = posts.filter(p => p.status === "active").sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     _cachedProfilePosts = activePosts;
+    _cachedProfileUser = profileUser;
     contentEl.innerHTML = activePosts.length
       ? activePosts.map(post => Posts.card(post)).join("")
       : UI.emptyState("Sin publicaciones", profileError || "Este usuario no ha publicado aún.", "", "📭");
 
     Feed.bindFeedActions();
     Profile.bind();
+    bindProfileActions(profileUser, isSelf);
     bindProfileTabs();
   }
 
@@ -236,9 +245,16 @@ const Router = (() => {
       </div>
     `);
     Notifications.bind();
+    document.querySelector(".chat-layout")?.addEventListener("click", (e) => {
+      const item = e.target.closest(".chat-conv-item");
+      if (item && item.getAttribute("href")) {
+        location.hash = item.getAttribute("href");
+      }
+    });
   }
 
   let _cachedProfilePosts = [];
+  let _cachedProfileUser = null;
 
   function bindProfileTabs() {
     const tabs = document.querySelectorAll(".profile-tab");
@@ -266,8 +282,49 @@ const Router = (() => {
           }).catch(() => {
             content.innerHTML = UI.emptyState("Error", "No se pudieron cargar las publicaciones guardadas.");
           });
+        } else if (tabName === "shorts") {
+          const user = _cachedProfileUser || Auth.user();
+          const shorts = typeof Shorts !== "undefined" ? Shorts.getAll().filter(short => String(short.userId) === String(user.userId || user.username) || short.username === user.username) : [];
+          content.innerHTML = shorts.length
+            ? shorts.map(short => `<article class="post-card"><span class="category-pill">${UI.escapeHTML(short.category || "Short")}</span><h2>${UI.escapeHTML(short.title)}</h2><p class="muted">${UI.escapeHTML(short.description || "Sin descripcion")}</p><a class="warning-btn inline-btn" href="#/shorts">Ver shorts</a></article>`).join("")
+            : UI.emptyState("Sin shorts", "Aun no hay shorts publicados por este perfil.", `<a class="warning-btn inline-btn" href="#/shorts">Crear short</a>`, "!");
+        } else if (tabName === "reports") {
+          const reports = _cachedProfilePosts.filter(post => ["Alerta", "Reporte ciudadano", "Denuncia", "Incidente", "Seguridad"].includes(post.category));
+          content.innerHTML = reports.length
+            ? reports.map(post => Posts.card(post, true)).join("")
+            : UI.emptyState("Sin reportes ciudadanos", "Aqui apareceran denuncias, alertas y reportes con contexto.", "", "!");
+          Feed.bindFeedActions();
+        } else if (tabName === "privacy") {
+          content.innerHTML = `
+            <section class="privacy-settings-card">
+              <h2>Configuracion de privacidad</h2>
+              <p>Usa zona aproximada, evita nombres reales y marca como sensible cualquier material fuerte.</p>
+              <label class="check-row"><input type="checkbox" checked disabled /> <span>No mostrar ubicacion exacta por defecto</span></label>
+              <label class="check-row"><input type="checkbox" checked disabled /> <span>Advertir antes de publicar personas identificables</span></label>
+              <label class="check-row"><input type="checkbox" checked disabled /> <span>Bloquear telefonos, correos, cedulas y direcciones exactas</span></label>
+            </section>
+          `;
+        } else {
+          content.innerHTML = _cachedProfilePosts.length
+            ? _cachedProfilePosts.map(post => Posts.card(post)).join("")
+            : UI.emptyState("Sin publicaciones", "Este usuario no ha publicado aun.", "", "!");
+          Feed.bindFeedActions();
         }
       });
+    });
+  }
+
+  function bindProfileActions(profileUser, isSelf) {
+    if (isSelf) return;
+    document.getElementById("profileMessageBtn")?.addEventListener("click", () => {
+      location.hash = `#/chat/${encodeURIComponent(profileUser.userId || profileUser.username)}`;
+    });
+    document.getElementById("profileFollowBtn")?.addEventListener("click", (event) => {
+      event.currentTarget.textContent = "Siguiendo";
+      UI.toast("Ahora sigues este perfil.", "success");
+    });
+    document.getElementById("profileReportBtn")?.addEventListener("click", () => {
+      UI.toast("Reporte de usuario recibido para revision.", "success");
     });
   }
 

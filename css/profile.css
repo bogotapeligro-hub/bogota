@@ -83,6 +83,21 @@
   gap: 12px;
   padding: 24px 20px 20px;
 }
+.profile-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 20px 18px;
+}
+.profile-badges span {
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 999px;
+  background: rgba(255,255,255,0.06);
+  color: #ccc;
+  padding: 7px 10px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
 
 .stat-card {
   background: #1e1e2e;
@@ -112,6 +127,7 @@
   padding: 0 20px;
   margin-bottom: 20px;
   border-bottom: 1px solid #2a2a3e;
+  overflow-x: auto;
 }
 
 .profile-tab {
@@ -124,6 +140,7 @@
   font-family: inherit;
   border-bottom: 2px solid transparent;
   transition: all 0.2s;
+  white-space: nowrap;
 }
 
 .profile-tab:hover {
@@ -137,6 +154,14 @@
 
 .profile-content {
   padding: 0 20px;
+}
+.privacy-settings-card {
+  display: grid;
+  gap: 12px;
+  border: 1px solid #2a2a3e;
+  border-radius: 12px;
+  background: #1e1e2e;
+  padding: 18px;
 }
 
 /* Avatar component */

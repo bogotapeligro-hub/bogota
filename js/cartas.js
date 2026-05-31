@@ -94,9 +94,14 @@ const G = {
 
 const CARTAS_ONLINE = {
   timer: null,
+  pollTimer: null,
   searching: false,
   matchId: "",
   mySlot: "player",
+  opponentId: "",
+  opponentUsername: "RIVAL",
+  p1Stood: false,
+  p2Stood: false,
 };
 
 /* ──────────────────────────────────────────────────────────────
@@ -169,6 +174,8 @@ function cartasExitToCasino() {
     cartasCommitWallet();
   }
   cartasCancelOnlineSearch(false);
+  window.clearInterval(CARTAS_ONLINE.pollTimer);
+  CARTAS_ONLINE.pollTimer = null;
   stopMusic();
   cartasUnlockCasinoNavigation();
   location.hash = '#/casino';
@@ -247,10 +254,16 @@ function dealInitial() {
 
   setTimeout(() => {
     renderHands();
+    if (G.gameMode === 'online') cartasSaveOnlineState();
     // Comprobar blackjack inmediato
     if (isBlackjack(G.playerHand)) {
       cartasSetStatus('🌟 ¡BLACKJACK!');
       setTimeout(endRound, 900);
+      return;
+    }
+    if (G.gameMode === 'online') {
+      cartasSetStatus('TU TURNO — Pide carta o plántate');
+      setControlsEnabled(true);
       return;
     }
     cartasSetStatus('TU TURNO — Pide carta o plántate');
@@ -289,6 +302,8 @@ function playerHit() {
   drawCard('player', false);
   renderHands();
 
+  if (G.gameMode === 'online') cartasSaveOnlineState();
+
   const total = handValue(G.playerHand);
 
   if (total === 21) {
@@ -304,6 +319,12 @@ function playerHit() {
 
   if (G.playerHand.length >= 3) {
     cartasSetStatus('Maximo 3 cartas. Ahora debes plantarte.');
+    if (G.gameMode === 'online') {
+      G.playerStood = true;
+      cartasSetStatus('Esperando al rival...');
+      cartasSaveOnlineState();
+      return;
+    }
   } else {
     cartasSetStatus('Tu turno');
   }
@@ -320,6 +341,16 @@ function playerStand() {
 
   G.playerStood = true;
   setControlsEnabled(false);
+
+  if (G.gameMode === 'online') {
+    G.botHand.forEach(c => c.hidden = false);
+    renderHands();
+    cartasSetStatus('✋ Te plantaste. Esperando al rival…');
+    cartasSaveOnlineState();
+    G.actionLock = false;
+    return;
+  }
+
   cartasSetStatus('✋ Te plantaste. El bot juega…');
 
   // Revelar carta oculta del bot
@@ -484,6 +515,8 @@ function endRound() {
 
   stopMusic();
 
+  if (G.gameMode === 'online') cartasSaveOnlineState({ outcome, coinDelta });
+
   /* ── Mostrar resultado ── */
   setTimeout(() => showResult(outcome, msg, submsg, coinDelta, pTotal, bTotal), 400);
 }
@@ -525,58 +558,52 @@ function cartasRestartGame() {
 }
 
 async function cartasStartOnlineSearch() {
-  if (!UI.requireSession()) return;
+  if (CARTAS_ONLINE.searching) return;
   cartasSyncWallet();
   if (G.coins < G.bet) {
     cartasShowToast('Monedas insuficientes', 'red');
     return;
   }
-  if (typeof Api === "undefined" || !Api.hasConfiguredApiUrl()) {
-    cartasShowToast('Configura Apps Script para buscar rival.', 'red');
-    return;
-  }
-  if (CARTAS_ONLINE.searching) return;
-  CARTAS_ONLINE.searching = true;
   document.getElementById('modal-online')?.classList.remove('hidden');
-  cartasSetOnlineModal('Buscando jugador...', 'Conectando con un rival registrado. Puedes cancelar la busqueda cuando quieras.', true);
-  await cartasPollOnlineMatch();
-  if (CARTAS_ONLINE.searching) CARTAS_ONLINE.timer = window.setInterval(cartasPollOnlineMatch, 1200);
-}
-
-async function cartasPollOnlineMatch() {
-  if (!CARTAS_ONLINE.searching) return;
-  try {
-    const result = await Api.apiCasinoJoinGameMatch(Auth.token(), 'cartas-distrito');
-    if (result.status === 'matched' && result.match) {
-      cartasAcceptOnlineMatch(result.match);
+  cartasSetOnlineModal('Buscando jugador...', 'Conectando con un rival registrado.', true);
+  CARTAS_ONLINE.searching = true;
+  Matchmaking.search('cartas-distrito', {
+    onStatus: (status) => {
+      if (status === 'waiting') {
+        cartasSetOnlineModal('Buscando jugador...', 'Esperando que otro jugador presione VS JUGADOR.', true);
+      } else if (status === 'matched') {
+        cartasSetOnlineModal('Jugador encontrado', 'Iniciando partida...', false);
+      }
+    },
+    onMatch: (data) => {
+      CARTAS_ONLINE.matchId = data.matchId;
+      CARTAS_ONLINE.mySlot = data.mySlot;
+      document.getElementById('modal-online')?.classList.add('hidden');
+      cartasShowToast('Rival conectado. Entrando a la partida.', 'green');
+      cartasStartGame('online');
+      cartasStartOnlinePolling();
+    },
+    onError: (msg) => {
+      cartasSetOnlineModal('Error', msg, false);
+      CARTAS_ONLINE.searching = false;
     }
-  } catch (error) {
-    cartasCancelOnlineSearch(false);
-    cartasSetOnlineModal('No se pudo buscar rival', error.message || 'Intenta otra vez.', false);
-    document.getElementById('modal-online')?.classList.remove('hidden');
-  }
-}
-
-function cartasAcceptOnlineMatch(match) {
-  window.clearInterval(CARTAS_ONLINE.timer);
-  CARTAS_ONLINE.timer = null;
-  CARTAS_ONLINE.searching = false;
-  CARTAS_ONLINE.matchId = match.matchId;
-  CARTAS_ONLINE.mySlot = match.mySlot || 'player';
-  document.getElementById('modal-online')?.classList.add('hidden');
-  cartasShowToast('Rival conectado. Entrando a la partida.', 'green');
-  cartasStartGame('online');
+  });
+  Matchmaking.connect().catch(() => {
+    if (CARTAS_ONLINE.searching) {
+      CARTAS_ONLINE.searching = false;
+      cartasSetOnlineModal('Error de conexion', 'Intenta otra vez.', false);
+    }
+  });
 }
 
 async function cartasCancelOnlineSearch(showToastMessage = true) {
-  window.clearInterval(CARTAS_ONLINE.timer);
-  CARTAS_ONLINE.timer = null;
   const wasSearching = CARTAS_ONLINE.searching;
   CARTAS_ONLINE.searching = false;
+  CARTAS_ONLINE.matchId = "";
+  window.clearInterval(CARTAS_ONLINE.pollTimer);
+  CARTAS_ONLINE.pollTimer = null;
   document.getElementById('modal-online')?.classList.add('hidden');
-  if (wasSearching && typeof Api !== "undefined" && Api.hasConfiguredApiUrl()) {
-    try { await Api.apiCasinoCancelGameMatchmaking(Auth.token(), 'cartas-distrito'); } catch {}
-  }
+  Matchmaking.cancel();
   if (wasSearching && showToastMessage) cartasShowToast('Busqueda cancelada. No se cobro moneda.', 'yellow');
 }
 
@@ -587,8 +614,129 @@ function cartasSetOnlineModal(title, text, searching) {
   const buttonEl = document.getElementById('online-cancel-btn');
   if (titleEl) titleEl.textContent = title;
   if (textEl) textEl.textContent = text;
-  if (noteEl) noteEl.textContent = searching ? 'Esperando otro jugador...' : 'No se cobro ninguna moneda.';
+  if (noteEl) noteEl.textContent = searching ? 'No se cobra moneda hasta encontrar rival.' : 'No se cobro ninguna moneda.';
   if (buttonEl) buttonEl.textContent = searching ? 'CANCELAR BUSQUEDA' : 'CERRAR';
+}
+
+/* ──────────────────────────────────────────────────────────────
+   MODO ONLINE — SINCRONIZACIÓN
+────────────────────────────────────────────────────────────── */
+async function cartasStartOnlinePolling() {
+  window.clearInterval(CARTAS_ONLINE.pollTimer);
+  CARTAS_ONLINE.pollTimer = window.setInterval(cartasPollOnlineGame, 800);
+}
+
+async function cartasPollOnlineGame() {
+  if (!CARTAS_ONLINE.matchId || G.gameMode !== 'online') return;
+  try {
+    const result = await Api.apiCasinoGetGameMatch(Auth.token(), CARTAS_ONLINE.matchId);
+    if (!result?.match?.state) return;
+    const s = result.match.state;
+    const myId = Auth.user()?.userId;
+    CARTAS_ONLINE.opponentId = s.p2Id === myId ? s.p1Id : s.p2Id;
+    CARTAS_ONLINE.opponentUsername = s.p2Id === myId ? (s.p1Username || 'RIVAL') : (s.p2Username || 'RIVAL');
+    document.getElementById('rival-zone-label').textContent = CARTAS_ONLINE.opponentUsername;
+
+    if (s.gameOver) {
+      if (!G.roundOver) {
+        G.roundOver = true;
+        G.gameActive = false;
+        const outcome = s.outcome || 'tie';
+        const coinDelta = s.coinDelta || 0;
+        const pTotal = handValue(G.playerHand);
+        const bTotal = handValue(G.botHand);
+        const msgs = {
+          win: ['Ganaste', 'Mayor puntaje'],
+          lose: ['Perdiste', 'Menor puntaje'],
+          tie: ['Empate', 'Mismo puntaje']
+        };
+        const [msg, submsg] = msgs[outcome] || ['Partida finalizada', ''];
+        if (coinDelta !== 0) {
+          G.coins += coinDelta;
+          cartasCommitWallet();
+          updateCoins();
+        }
+        stopMusic();
+        setTimeout(() => showResult(outcome, msg, submsg, coinDelta, pTotal, bTotal), 400);
+      }
+      window.clearInterval(CARTAS_ONLINE.pollTimer);
+      CARTAS_ONLINE.pollTimer = null;
+      return;
+    }
+
+    if (s.deck && s.deck.length > 0) {
+      G.deck = s.deck;
+    }
+    if (s.p1Hand && s.p2Hand && s.p1Hand.length > 0 && s.p2Hand.length > 0) {
+      G.playerHand = CARTAS_ONLINE.mySlot === 'player' ? [...s.p1Hand] : [...s.p2Hand];
+      G.botHand = CARTAS_ONLINE.mySlot === 'player' ? [...s.p2Hand] : [...s.p1Hand];
+    }
+
+    CARTAS_ONLINE.p1Stood = s.p1Stood || false;
+    CARTAS_ONLINE.p2Stood = s.p2Stood || false;
+
+    const myStood = CARTAS_ONLINE.mySlot === 'player' ? s.p1Stood : s.p2Stood;
+    const oppStood = CARTAS_ONLINE.mySlot === 'player' ? s.p2Stood : s.p1Stood;
+
+    if (myStood && !G.playerStood) {
+      G.playerStood = true;
+    }
+    if (oppStood && !G.botStood) {
+      G.botStood = true;
+      cartasSetStatus('El rival se planto');
+      if (G.playerStood) {
+        setTimeout(endRound, 800);
+        return;
+      }
+    }
+
+    const mySlotKey = CARTAS_ONLINE.mySlot === 'player' ? 'p1' : 'p2';
+    const oppSlotKey = CARTAS_ONLINE.mySlot === 'player' ? 'p2' : 'p1';
+
+    if (!G.actionLock) {
+      if (s[`${oppSlotKey}Action`] === 'hit') {
+        cartasSetStatus('El rival pidio carta');
+      }
+      if (s[`${mySlotKey}Action`] === 'hit' && !G.playerStood) {
+        if (!G.roundOver) {
+          setControlsEnabled(true);
+        }
+      }
+    }
+
+    renderHands();
+  } catch (err) {
+    cartasShowToast('Error de sincronizacion.', 'red');
+  }
+}
+
+async function cartasSaveOnlineState(result) {
+  if (!CARTAS_ONLINE.matchId || G.gameMode !== 'online') return;
+  const myId = Auth.user()?.userId;
+  const myUser = Auth.user();
+  const mySlotKey = CARTAS_ONLINE.mySlot === 'player' ? 'p1' : 'p2';
+  const oppSlotKey = CARTAS_ONLINE.mySlot === 'player' ? 'p2' : 'p1';
+  const state = {
+    p1Id: CARTAS_ONLINE.mySlot === 'player' ? myId : CARTAS_ONLINE.opponentId,
+    p2Id: CARTAS_ONLINE.mySlot === 'player' ? CARTAS_ONLINE.opponentId : myId,
+    p1Username: CARTAS_ONLINE.mySlot === 'player' ? (myUser?.username || 'Jugador') : CARTAS_ONLINE.opponentUsername,
+    p2Username: CARTAS_ONLINE.mySlot === 'player' ? CARTAS_ONLINE.opponentUsername : (myUser?.username || 'Jugador'),
+    p1Hand: CARTAS_ONLINE.mySlot === 'player' ? G.playerHand : G.botHand,
+    p2Hand: CARTAS_ONLINE.mySlot === 'player' ? G.botHand : G.playerHand,
+    p1Stood: CARTAS_ONLINE.mySlot === 'player' ? G.playerStood : G.botStood,
+    p2Stood: CARTAS_ONLINE.mySlot === 'player' ? G.botStood : G.playerStood,
+    [mySlotKey + 'Action']: G.playerStood ? 'stand' : G.roundOver ? 'done' : 'hit',
+    deck: G.deck,
+    gameOver: G.roundOver,
+    outcome: G.roundOver ? (result?.outcome || null) : null,
+    coinDelta: G.roundOver ? (result?.coinDelta || 0) : null,
+    updatedAt: Date.now()
+  };
+  try {
+    await Api.apiCasinoSaveGameMatch(Auth.token(), CARTAS_ONLINE.matchId, state);
+  } catch (err) {
+    cartasShowToast('Error al sincronizar.', 'red');
+  }
 }
 
 function cartasUnlockCasinoNavigation() {
@@ -795,6 +943,8 @@ window.CartasDistrito = {
   restartGame: cartasRestartGame,
   destroy: () => {
     cartasCancelOnlineSearch(false);
+    window.clearInterval(CARTAS_ONLINE.pollTimer);
+    CARTAS_ONLINE.pollTimer = null;
     stopMusic();
     cartasUnlockCasinoNavigation();
   }

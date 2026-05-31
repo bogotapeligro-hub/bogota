@@ -101,6 +101,14 @@
   .report-map-card {
     grid-template-columns: 1fr;
   }
+  .city-alert-grid,
+  .alert-row {
+    grid-template-columns: 1fr;
+  }
+  .city-alert-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
   .report-map-canvas {
     min-height: 420px;
   }
@@ -125,7 +133,7 @@
   .age-actions,
   .modal-actions { display: grid; }
   .user-row { grid-template-columns: 1fr; }
-  .floating-post-btn { right: 16px; bottom: 16px; width: 54px; height: 54px; }
+  .floating-post-btn { right: 16px; bottom: calc(68px + env(safe-area-inset-bottom, 0px)); width: 48px; height: 48px; font-size: 1.5rem; z-index: 30; }
   .busy-overlay,
   .age-modal-backdrop,
   .modal-backdrop,

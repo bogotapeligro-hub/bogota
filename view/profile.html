@@ -3,21 +3,34 @@
   <div class="profile-header">
     <div class="profile-avatar-wrap" id="profileAvatarWrap"></div>
     <div class="profile-info">
-      <h1 class="profile-username" id="profileUsername">—</h1>
+      <h1 class="profile-username" id="profileUsername">-</h1>
       <p class="profile-role" id="profileRole">Vecino</p>
-      <p class="profile-bio" id="profileBio">Sin biografía aún.</p>
-      <button class="warning-btn profile-edit-btn" id="editProfileBtn">Editar perfil</button>
+      <p class="profile-bio" id="profileBio">Sin biografia aun.</p>
+      <div class="profile-actions">
+        <button class="warning-btn profile-edit-btn" id="editProfileBtn">Editar perfil</button>
+        <button class="ghost-btn" id="profileMessageBtn">Mensaje</button>
+        <button class="ghost-btn" id="profileFollowBtn">Seguir</button>
+        <button class="ghost-btn danger" id="profileReportBtn">Reportar usuario</button>
+      </div>
     </div>
   </div>
   <div class="profile-stats" id="profileStats">
     <div class="stat-card"><strong id="statPosts">0</strong><span>Publicaciones</span></div>
     <div class="stat-card"><strong id="statReactions">0</strong><span>Reacciones</span></div>
-    <div class="stat-card"><strong id="statCoins">0</strong><span>Monedas</span></div>
+    <div class="stat-card"><strong id="statReports">0</strong><span>Reportes hechos</span></div>
     <div class="stat-card"><strong id="statGames">0</strong><span>Juegos ganados</span></div>
   </div>
+  <div class="profile-badges">
+    <span>Comunidad</span>
+    <span>Reporta con contexto</span>
+    <span>Privacidad primero</span>
+  </div>
   <div class="profile-tab-bar">
-    <button class="profile-tab active" data-tab="posts">Tus publicaciones</button>
+    <button class="profile-tab active" data-tab="posts">Publicaciones</button>
+    <button class="profile-tab" data-tab="shorts">Shorts</button>
+    <button class="profile-tab" data-tab="reports">Reportes</button>
     <button class="profile-tab" data-tab="saved">Guardados</button>
+    <button class="profile-tab" data-tab="privacy">Privacidad</button>
   </div>
   <div class="profile-content" id="profileContent">
     <div class="loading-skeleton">Cargando publicaciones...</div>

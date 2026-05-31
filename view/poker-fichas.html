@@ -31,7 +31,11 @@
     </div>
 
     <button class="pf-btn-primary" data-pf-action="start">
-      <span class="pf-btn-icon">🎰</span> JUGAR (1 MONEDA)
+      <span class="pf-btn-icon">🤖</span> VS BOT (1 MONEDA)
+    </button>
+    <button class="pf-btn-secondary" data-pf-action="online">
+      <span class="pf-btn-icon">👥</span> VS JUGADOR
+      <span class="badge-soon">ONLINE</span>
     </button>
     <button class="pf-btn-ghost" data-pf-action="exit">🏠 SALIR AL CASINO</button>
     <button class="pf-btn-ghost" data-pf-music onclick="PokerFichas.toggleMusic()">🔇 Música</button>
@@ -84,7 +88,18 @@
   </div>
 </div>
 
-<div id="pf-screen-end" class="pf-screen">
+  <div id="pf-modal-online" class="modal-overlay hidden">
+    <div class="modal-box">
+      <div class="modal-icon">👥</div>
+      <h3 id="pf-online-title">Buscando jugador...</h3>
+      <p id="pf-online-text">Conectando con un rival registrado.</p>
+      <div class="wait-animation"><div class="spinner"></div></div>
+      <p class="modal-note" id="pf-online-note">No se cobra moneda hasta encontrar rival.</p>
+      <button class="pf-btn-primary" id="pf-online-cancel-btn" onclick="PokerFichas.cancelOnline()">CANCELAR BUSQUEDA</button>
+    </div>
+  </div>
+
+  <div id="pf-screen-end" class="pf-screen">
   <div class="pf-scanlines"></div>
   <div class="pf-end-content">
     <div class="pf-end-icon" data-pf-end-icon>🏆</div>

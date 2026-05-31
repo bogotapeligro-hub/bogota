@@ -306,6 +306,7 @@ const Chat = (() => {
       })
       .sort((a, b) => {
         const aTime = a.lastMsg ? new Date(a.lastMsg.createdAt).getTime() : 0;
+        const bTime = b.lastMsg ? new Date(b.lastMsg.createdAt).getTime() : 0;
         return bTime - aTime;
       });
 

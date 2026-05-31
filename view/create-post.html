@@ -3,26 +3,47 @@
     <div class="sidebar-card">
       <a class="side-link" href="#/feed">Inicio</a>
       <a class="side-link active" href="#/create-post">Publicar</a>
+      <a class="side-link" href="#/shorts">Shorts</a>
+      <a class="side-link" href="#/alertas">Alertas</a>
       <a class="side-link" href="#/rules">Reglas</a>
+    </div>
+    <div class="sidebar-card caution-card">
+      <strong>Publica con contexto</strong>
+      <p>Marca como sensible peleas, accidentes, agresiones o imagenes fuertes. No publiques direcciones exactas ni datos privados.</p>
     </div>
   </aside>
   <section class="form-card">
-    <span class="badge-alert">Nueva alerta</span>
-    <h1>Crear publicación</h1>
-    <p class="muted">Publica información urbana de interés público. No publiques datos personales, acusaciones sin evidencia ni contenido prohibido.</p>
+    <span class="badge-alert">Nuevo reporte</span>
+    <h1>Crear publicacion</h1>
+    <p class="muted">Documenta una situacion publica de forma responsable. La plataforma prioriza contexto, alertas ciudadanas y seguridad.</p>
     <form id="createPostForm" class="post-form">
-      <label>Título</label>
-      <input name="title" maxlength="120" placeholder="Ej: Bloqueo en la Av. Caracas" required />
-      <label>Descripción</label>
-      <textarea name="description" rows="6" maxlength="1200" placeholder="Describe qué ocurre, dónde y qué tan reciente es. Evita nombres, cédulas, teléfonos o direcciones exactas." required></textarea>
+      <label>Titulo</label>
+      <input name="title" maxlength="120" placeholder="Ej: Manifestacion activa en la Av. Caracas" required />
+      <label>Descripcion</label>
+      <textarea name="description" rows="6" maxlength="1200" placeholder="Describe que ocurre, zona aproximada, hora y contexto. Evita nombres, cedulas, telefonos o direcciones exactas." required></textarea>
       <div class="form-grid">
         <div>
-          <label>Categoría</label>
+          <label>Categoria</label>
           <select name="category" required></select>
         </div>
         <div>
-          <label>Localidad o zona</label>
+          <label>Localidad o zona aproximada</label>
           <select name="location" required></select>
+        </div>
+      </div>
+      <div class="form-grid">
+        <div>
+          <label>Nivel de alerta</label>
+          <select name="alertLevel">
+            <option value="">No aplica</option>
+            <option value="Bajo">Bajo</option>
+            <option value="Medio">Medio</option>
+            <option value="Alto">Alto</option>
+          </select>
+        </div>
+        <div>
+          <label>Fuente o contexto opcional</label>
+          <input name="source" maxlength="180" placeholder="Ej: visto en el sitio, reporte vecinal, enlace oficial" />
         </div>
       </div>
       <div class="media-upload-box">
@@ -33,16 +54,30 @@
           <button class="ghost-btn" type="button" data-pick-media="video">Subir video</button>
           <button class="mini-btn danger hidden" type="button" id="clearMediaBtn">Quitar</button>
         </div>
-        <p class="muted small">Máximo 5 fotos y 1 video de hasta 1 minuto.</p>
+        <p class="muted small">Maximo 5 fotos y 1 video de hasta 1 minuto.</p>
         <div id="mediaUploadPreview" class="media-upload-preview">Sin contenido multimedia</div>
       </div>
       <label>Etiquetas</label>
-      <input name="tags" placeholder="movilidad, centro, emergencia" />
+      <input name="tags" placeholder="movilidad, centro, manifestacion" />
+      <div class="privacy-panel">
+        <label class="check-row">
+          <input name="isSensitive" type="checkbox" />
+          <span>Este contenido es sensible o puede mostrar violencia, accidente, agresion o imagenes fuertes.</span>
+        </label>
+        <label class="check-row">
+          <input name="blurFaces" type="checkbox" />
+          <span>Requiere difuminar rostros o datos visibles antes de difundirse mas.</span>
+        </label>
+        <label class="check-row">
+          <input name="anonymous" type="checkbox" />
+          <span>Publicar sin mostrar mi nombre de usuario en la tarjeta publica.</span>
+        </label>
+      </div>
       <label class="check-row critical-check">
         <input name="contentSafety" type="checkbox" />
         <span>Confirmo que este contenido no muestra violencia contra menores, contenido sexual de menores, datos personales privados ni incita a cometer delitos.</span>
       </label>
-      <button class="warning-btn full" type="submit">Publicar alerta</button>
+      <button class="warning-btn full" type="submit">Publicar reporte</button>
     </form>
   </section>
 </div>

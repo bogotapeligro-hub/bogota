@@ -422,3 +422,48 @@ code {
 .user-row { grid-template-columns: 1fr auto auto; align-items: center; }
 
 .back-link { display: inline-flex; color: var(--yellow); margin-bottom: 14px; font-weight: 800; }
+
+/* ─── Modal genérico (usado por casino, online, etc.) ─── */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.85);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 500; padding: 20px;
+  backdrop-filter: blur(4px);
+}
+.modal-box {
+  background: #0E0E1C;
+  border: 1px solid #252540;
+  border-top: 3px solid #FFD600;
+  border-radius: 14px;
+  padding: 32px 28px;
+  max-width: 380px; width: 100%;
+  text-align: center;
+  display: flex; flex-direction: column; gap: 14px;
+  box-shadow: 0 0 80px rgba(0,0,0,0.8), 0 0 40px rgba(255,214,0,0.06);
+}
+.modal-icon { font-size: 3rem; }
+.modal-box h3 { font-family: 'Bebas Neue', sans-serif; font-size: 1.5rem; color: #FFD600; letter-spacing: 0.08em; }
+.modal-box p  { color: #7777AA; line-height: 1.6; font-size: 0.95rem; }
+.modal-note { font-style: italic; font-size: 0.85rem !important; color: #7777AA; }
+
+.badge-soon {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.5rem;
+  background: #8b1010;
+  color: #fff;
+  border-radius: 4px;
+  padding: 2px 5px;
+  letter-spacing: 0.05em;
+  vertical-align: middle;
+}
+
+.wait-animation { display: flex; justify-content: center; align-items: center; min-height: 38px; }
+.spinner {
+  width: 36px; height: 36px;
+  border: 3px solid rgba(255,214,0,0.15);
+  border-top-color: #FFD600;
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }

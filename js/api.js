@@ -220,7 +220,14 @@ const Api = (() => {
   }
 
   function apiRuletaJoinMatch(token) {
-    return apiRequest("ruletaJoinMatch", { token });
+    const user = (typeof Auth !== 'undefined') ? Auth.user() : null;
+    return apiRequest("ruletaJoinMatch", {
+      token,
+      status: 'searching',
+      userId: user?.userId || '',
+      username: user?.username || '',
+      joinedAt: Date.now()
+    });
   }
 
   function apiRuletaGetMatch(token, matchId) {
@@ -236,7 +243,14 @@ const Api = (() => {
   }
 
   function apiCasinoJoinGameMatch(token, gameType) {
-    return apiRequest("casinoJoinGameMatch", { token, gameType });
+    const user = (typeof Auth !== 'undefined') ? Auth.user() : null;
+    return apiRequest("casinoJoinGameMatch", {
+      token, gameType,
+      status: 'searching',
+      userId: user?.userId || '',
+      username: user?.username || '',
+      joinedAt: Date.now()
+    });
   }
 
   function apiCasinoGetGameMatch(token, matchId) {

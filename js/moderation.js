@@ -67,6 +67,11 @@ const Moderation = (() => {
       flags.push("Bloqueado: instrucciones para cometer delitos o causar dano.");
     }
 
+    const personalFlags = detectPersonalData(content);
+    if (personalFlags.length) {
+      flags.push(`${personalFlags[0]}. Usa zona aproximada y elimina datos privados.`);
+    }
+
     if (mode === "comment" && containsAny(content, extremeInsults)) {
       flags.push("Bloqueado: insultos extremos o acoso.");
     }
