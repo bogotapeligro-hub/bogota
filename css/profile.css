@@ -47,6 +47,7 @@
 .profile-info {
   flex: 1;
   padding-bottom: 8px;
+  min-width: 0;
 }
 
 .profile-username {
@@ -75,6 +76,19 @@
 .profile-edit-btn {
   font-size: 0.85rem;
   padding: 6px 18px;
+}
+
+.profile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.profile-actions .ghost-btn,
+.profile-actions .warning-btn {
+  min-height: 40px;
+  white-space: nowrap;
 }
 
 .profile-stats {

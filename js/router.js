@@ -213,10 +213,11 @@ const Router = (() => {
       statsEl.querySelector("#statGames").textContent = stats.games || 0;
     }
 
+    const messageButton = document.getElementById("profileMessageBtn");
     if (!isViewingSelf) {
       document.getElementById("editProfileBtn")?.remove();
     } else {
-      document.getElementById("profileMessageBtn")?.remove();
+      if (messageButton) messageButton.textContent = "Ver mensajes";
       document.getElementById("profileFollowBtn")?.remove();
       document.getElementById("profileReportBtn")?.remove();
     }
@@ -315,10 +316,14 @@ const Router = (() => {
   }
 
   function bindProfileActions(profileUser, isSelf) {
-    if (isSelf) return;
     document.getElementById("profileMessageBtn")?.addEventListener("click", () => {
+      if (isSelf) {
+        location.hash = "#/chat";
+        return;
+      }
       location.hash = `#/chat/${encodeURIComponent(profileUser.userId || profileUser.username)}`;
     });
+    if (isSelf) return;
     document.getElementById("profileFollowBtn")?.addEventListener("click", (event) => {
       event.currentTarget.textContent = "Siguiendo";
       UI.toast("Ahora sigues este perfil.", "success");

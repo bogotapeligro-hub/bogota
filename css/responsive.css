@@ -160,10 +160,40 @@
   .table-3d { min-height: 230px; border-radius: 18px; }
   .duel-device { height: 60px; }
   .power-card { width: 100%; }
-  .profile-page { padding: 0 12px 32px; }
+  .profile-page { padding: 0 0 32px; }
   .profile-cover { height: 100px; border-radius: 12px; margin-bottom: -36px; }
-  .profile-header { padding: 0 12px; gap: 14px; }
+  .profile-header {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: end;
+    padding: 0 12px;
+    gap: 14px;
+  }
+  .profile-info {
+    min-width: 0;
+  }
+  .profile-bio {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+  .profile-actions {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .profile-actions .ghost-btn,
+  .profile-actions .warning-btn {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+    text-align: center;
+  }
   .profile-stats { grid-template-columns: repeat(2, 1fr); padding: 20px 12px 16px; gap: 8px; }
+  .profile-badges {
+    padding: 0 12px 14px;
+  }
   .profile-tab-bar { padding: 0 12px; }
   .profile-content { padding: 0 12px; }
   .profile-username { font-size: 1.3rem; }
