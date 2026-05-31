@@ -88,6 +88,7 @@ function doPost(e) {
       case "getUserProfile": data = getUserProfile(payload); break;
       case "listGlobalMessages": data = listGlobalMessages(payload); break;
       case "createGlobalMessage": data = createGlobalMessage(payload); break;
+      case "listPrivateConversations": data = listPrivateConversations(payload); break;
       case "listPrivateMessages": data = listPrivateMessages(payload); break;
       case "createPrivateMessage": data = createPrivateMessage(payload); break;
       case "markPrivateRead": data = markPrivateRead(payload); break;
@@ -393,6 +394,54 @@ function createGlobalMessage(payload) {
   appendObject(getSheet("ChatMessages"), SHEETS.ChatMessages, message);
   audit(user.userId, "createGlobalMessage", "chat", message.messageId, "Global");
   return { message: message };
+}
+
+function listPrivateConversations(payload) {
+  const user = requireUser(payload.token);
+  ensureSheetsReady();
+  const messages = sheetToObjects(getSheet("ChatMessages"))
+    .filter(function(message) {
+      return message.scope === "private" && (message.fromUserId === user.userId || message.toUserId === user.userId);
+    })
+    .sort(function(a, b) { return new Date(a.createdAt) - new Date(b.createdAt); });
+
+  const conversationsById = {};
+  messages.forEach(function(message) {
+    const cid = message.conversationId || chatConversationId(message.fromUserId, message.toUserId);
+    if (!conversationsById[cid]) {
+      conversationsById[cid] = {
+        chatId: cid,
+        conversationId: cid,
+        participants: cid.split("__"),
+        peerNames: {},
+        unreadBy: {},
+        messages: []
+      };
+    }
+    const conversation = conversationsById[cid];
+    conversation.peerNames[message.fromUserId] = message.fromUsername || message.fromUserId;
+    conversation.peerNames[message.toUserId] = message.toUsername || message.toUserId;
+    conversation.messages.push(message);
+
+    const readBy = String(message.readBy || "").split(",").filter(Boolean);
+    if (message.toUserId === user.userId && readBy.indexOf(user.userId) === -1) {
+      conversation.unreadBy[user.userId] = Number(conversation.unreadBy[user.userId] || 0) + 1;
+    }
+  });
+
+  const conversations = Object.keys(conversationsById)
+    .map(function(cid) {
+      const conversation = conversationsById[cid];
+      const last = conversation.messages[conversation.messages.length - 1] || {};
+      conversation.lastMessage = last.text || (last.mediaUrl ? "Imagen" : "");
+      conversation.lastMessageAt = last.createdAt || "";
+      conversation.updatedAt = conversation.lastMessageAt;
+      conversation.messages = conversation.messages.slice(-80);
+      return conversation;
+    })
+    .sort(function(a, b) { return new Date(b.updatedAt) - new Date(a.updatedAt); });
+
+  return { conversations: conversations };
 }
 
 function listPrivateMessages(payload) {

@@ -877,7 +877,23 @@
   padding: 14px;
   margin: 10px 0;
 }
+.comment-card.sending {
+  opacity: 0.72;
+  border-style: dashed;
+}
+.comment-card.failed {
+  border-color: rgba(255,59,59,0.45);
+  background: rgba(255,59,59,0.07);
+}
 .comment-card p { color: var(--dirty-white); line-height: 1.55; }
+.comment-status {
+  display: inline-flex;
+  margin-left: 6px;
+  color: var(--yellow);
+  font-size: 0.76rem;
+  font-weight: 850;
+}
+.comment-status.error { color: #fecaca; }
 .comment-actions {
   display: grid;
   gap: 10px;
@@ -967,6 +983,33 @@
 .chat-message.mine .chat-bubble {
   background: rgba(255,212,59,0.12);
   border-color: rgba(255,212,59,0.28);
+}
+.chat-message.sending .chat-bubble {
+  opacity: 0.72;
+  border-style: dashed;
+}
+.chat-message-skeleton {
+  margin: 12px 0;
+  display: grid;
+  gap: 8px;
+  width: min(460px, 80%);
+}
+.chat-message-skeleton::before,
+.chat-message-skeleton::after {
+  content: "";
+  display: block;
+  height: 18px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.05), rgba(255,255,255,0.12), rgba(255,255,255,0.05));
+  background-size: 220% 100%;
+  animation: chatSkeleton 1.15s linear infinite;
+}
+.chat-message-skeleton::after {
+  width: 68%;
+}
+@keyframes chatSkeleton {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
 }
 .chat-meta {
   display: flex;

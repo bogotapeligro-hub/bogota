@@ -1,27 +1,50 @@
 const Notifications = (() => {
-  const KEY = "bau_notifications_v1";
-  const MAX = 100;
+  const KEY = "bau_notifications_v2";
+  const LEGACY_KEY = "bau_notifications_v1";
+  const MAX = 160;
   let bound = false;
 
-  function getAll() {
-    try {
-      return JSON.parse(localStorage.getItem(KEY) || "[]");
-    } catch {
-      return [];
-    }
+  function currentUserId() {
+    const user = Auth.user();
+    return String(user?.userId || user?.username || "");
   }
 
-  function saveAll(list) {
-    localStorage.setItem(KEY, JSON.stringify(list.slice(-MAX)));
+  function readJson(key, fallback) {
+    try { return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback)); }
+    catch { return fallback; }
+  }
+
+  function getRawAll() {
+    const stored = readJson(KEY, null);
+    if (Array.isArray(stored)) return stored;
+    const legacy = readJson(LEGACY_KEY, []);
+    const userId = currentUserId();
+    return legacy.map(item => ({ ...item, toUserId: item.toUserId || userId }));
+  }
+
+  function getAll() {
+    const userId = currentUserId();
+    return getRawAll()
+      .filter(item => !item.toUserId || item.toUserId === userId)
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  }
+
+  function saveRawAll(list) {
+    localStorage.setItem(KEY, JSON.stringify(list.slice(0, MAX)));
     updateBadge();
     window.dispatchEvent(new CustomEvent("bau-notifications-updated"));
   }
 
-  function add(type, title, message, link = "", emoji = "🔔") {
-    const user = Auth.user();
-    if (!user) return;
-    const notif = {
+  function saveAllForCurrentUser(userList) {
+    const userId = currentUserId();
+    const others = getRawAll().filter(item => item.toUserId && item.toUserId !== userId);
+    saveRawAll([...userList, ...others].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+  }
+
+  function makeNotification({ toUserId = currentUserId(), type, title, message, link = "", emoji = "!", meta = {} }) {
+    return {
       id: `notif_${Date.now()}_${Math.random().toString(16).slice(2)}`,
+      notificationId: `notif_${Date.now()}_${Math.random().toString(16).slice(2)}`,
       type,
       title,
       message,
@@ -29,12 +52,31 @@ const Notifications = (() => {
       emoji,
       read: false,
       createdAt: new Date().toISOString(),
-      username: user.username
+      toUserId,
+      username: Auth.user()?.username || "",
+      ...meta
     };
-    const all = getAll();
+  }
+
+  function add(type, title, message, link = "", emoji = "!") {
+    return addForUser({ toUserId: currentUserId(), type, title, message, link, emoji });
+  }
+
+  function addForUser(input) {
+    const notif = makeNotification(input);
+    if (!notif.toUserId) return null;
+    const all = getRawAll();
+    const duplicate = all.some(item =>
+      item.toUserId === notif.toUserId &&
+      item.type === notif.type &&
+      item.messageId &&
+      notif.messageId &&
+      item.messageId === notif.messageId
+    );
+    if (duplicate) return null;
     all.unshift(notif);
-    saveAll(all);
-    showToast(notif);
+    saveRawAll(all);
+    if (notif.toUserId === currentUserId()) showToast(notif);
     return notif;
   }
 
@@ -43,29 +85,43 @@ const Notifications = (() => {
     if (!toastRoot) return;
     const item = document.createElement("div");
     item.className = `toast toast-notif toast-${notif.type}`;
-    item.innerHTML = `<span class="toast-notif-emoji">${notif.emoji}</span><div><strong>${UI.escapeHTML(notif.title)}</strong><p>${UI.escapeHTML(notif.message)}</p></div>`;
+    item.innerHTML = `<span class="toast-notif-emoji">${UI.escapeHTML(notif.emoji || "!")}</span><div><strong>${UI.escapeHTML(notif.title)}</strong><p>${UI.escapeHTML(notif.message)}</p></div>`;
     if (notif.link) {
       item.style.cursor = "pointer";
-      item.addEventListener("click", () => { location.hash = notif.link; item.remove(); });
+      item.addEventListener("click", () => {
+        markAsRead(notif.id);
+        location.hash = notif.link;
+        item.remove();
+      });
     }
     toastRoot.appendChild(item);
     window.setTimeout(() => {
       item.classList.add("toast-out");
       window.setTimeout(() => item.remove(), 250);
-    }, 4000);
+    }, 4200);
   }
 
   function markAsRead(id) {
-    const all = getAll();
-    const found = all.find(n => n.id === id);
+    const all = getRawAll();
+    const found = all.find(n => n.id === id || n.notificationId === id);
     if (found) found.read = true;
-    saveAll(all);
+    saveRawAll(all);
+  }
+
+  function markChatAsRead(chatId) {
+    const userId = currentUserId();
+    if (!userId || !chatId) return;
+    const all = getRawAll();
+    all.forEach(item => {
+      if (item.toUserId === userId && item.chatId === chatId) item.read = true;
+    });
+    saveRawAll(all);
   }
 
   function markAllAsRead() {
-    const all = getAll();
-    all.forEach(n => n.read = true);
-    saveAll(all);
+    const current = getAll();
+    current.forEach(n => n.read = true);
+    saveAllForCurrentUser(current);
   }
 
   function unreadCount() {
@@ -84,7 +140,7 @@ const Notifications = (() => {
     const count = unreadCount();
     return `
       <button class="notif-bell" id="notifBell" aria-label="Notificaciones">
-        🔔
+        !
         <span class="notif-badge ${count > 0 ? "" : "hidden"}" data-notif-badge>${Math.min(count, 99)}</span>
       </button>
     `;
@@ -97,18 +153,18 @@ const Notifications = (() => {
       <div class="notif-panel" id="notifPanel">
         <div class="notif-panel-header">
           <h3>Notificaciones</h3>
-          ${count > 0 ? `<button class="mini-btn" id="notifMarkAllRead">Marcar leídas</button>` : ""}
+          ${count > 0 ? `<button class="mini-btn" id="notifMarkAllRead">Marcar leidas</button>` : ""}
         </div>
         <div class="notif-panel-body">
           ${all.length === 0 ? `
             <div class="notif-empty">
-              <span class="notif-empty-icon">🔔</span>
+              <span class="notif-empty-icon">!</span>
               <p>Sin notificaciones</p>
-              <small>Las novedades aparecerán aquí</small>
+              <small>Las novedades apareceran aqui</small>
             </div>
           ` : all.map(n => `
             <div class="notif-item ${n.read ? "read" : "unread"}" data-notif-id="${n.id}" ${n.link ? `data-notif-link="${UI.escapeHTML(n.link)}"` : ""}>
-              <span class="notif-item-emoji">${n.emoji}</span>
+              <span class="notif-item-emoji">${UI.escapeHTML(n.emoji || "!")}</span>
               <div class="notif-item-content">
                 <strong>${UI.escapeHTML(n.title)}</strong>
                 <p>${UI.escapeHTML(n.message)}</p>
@@ -138,55 +194,47 @@ const Notifications = (() => {
   function bind() {
     if (bound) return;
     bound = true;
-
-    document.addEventListener("click", (e) => {
+    document.addEventListener("click", (event) => {
       const bell = document.getElementById("notifBell");
       const panel = document.getElementById("notifPanel");
-      if (bell && (e.target.closest("#notifBell") || e.target.closest(".notif-bell"))) {
-        e.stopPropagation();
+      if (bell && (event.target.closest("#notifBell") || event.target.closest(".notif-bell"))) {
+        event.stopPropagation();
         if (panel) {
           panel.remove();
           return;
         }
-        const existing = document.querySelector(".notif-panel");
-        if (existing) existing.remove();
+        document.querySelector(".notif-panel")?.remove();
         bell.insertAdjacentHTML("afterend", renderPanel());
         const newPanel = document.getElementById("notifPanel");
-        if (newPanel) {
-          newPanel.querySelector("#notifMarkAllRead")?.addEventListener("click", () => {
-            markAllAsRead();
+        newPanel?.querySelector("#notifMarkAllRead")?.addEventListener("click", () => {
+          markAllAsRead();
+          newPanel.remove();
+        });
+        newPanel?.querySelectorAll("[data-notif-id]").forEach(el => {
+          el.addEventListener("click", () => {
+            const id = el.dataset.notifId;
+            const link = el.dataset.notifLink;
+            markAsRead(id);
+            if (link) location.hash = link;
             newPanel.remove();
           });
-          newPanel.querySelectorAll("[data-notif-id]").forEach(el => {
-            el.addEventListener("click", () => {
-              const id = el.dataset.notifId;
-              const link = el.dataset.notifLink;
-              markAsRead(id);
-              if (link) location.hash = link;
-            });
-          });
-        }
+        });
       }
-      if (panel && !e.target.closest(".notif-panel") && !e.target.closest("#notifBell")) {
-        panel.remove();
-      }
+      if (panel && !event.target.closest(".notif-panel") && !event.target.closest("#notifBell")) panel.remove();
     });
   }
 
-  function onNewNotification(notif) {
-    const path = (location.hash || "").replace(/^#/, "").split("?")[0];
-    const ignorePaths = ["/chat", "/chat-global"];
-    if (!ignorePaths.includes(path) && !path.startsWith("/chat/")) {
-      showToast(notif);
-    }
-  }
-
   window.addEventListener("bau-notifications-updated", updateBadge);
+  window.addEventListener("storage", event => {
+    if (event.key === KEY) updateBadge();
+  });
 
   return {
     add,
+    addForUser,
     getAll,
     markAsRead,
+    markChatAsRead,
     markAllAsRead,
     unreadCount,
     updateBadge,

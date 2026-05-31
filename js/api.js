@@ -281,6 +281,10 @@ const Api = (() => {
     return apiRequest("listPrivateMessages", { token, peerUserId });
   }
 
+  function apiListPrivateConversations(token) {
+    return apiRequest("listPrivateConversations", { token });
+  }
+
   function apiCreatePrivateMessage(token, peerUserId, text, media = {}) {
     return apiRequest("createPrivateMessage", { token, peerUserId, text, mediaUrl: media.mediaUrl || "", mediaType: media.mediaType || "" });
   }
@@ -329,6 +333,7 @@ const Api = (() => {
     apiListGlobalMessages,
     apiCreateGlobalMessage,
     apiListPrivateMessages,
+    apiListPrivateConversations,
     apiCreatePrivateMessage,
     apiMarkPrivateRead,
     clearCache,
