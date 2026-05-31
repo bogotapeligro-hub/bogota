@@ -89,12 +89,10 @@ const G = {
 
   actionLock:  false,  // Anti-doble clic
   musicOn:     false,
-  musicCtx:    null,
-  musicTimer:  null,
   musicAudio:  null,
 };
 
-const ONLINE = {
+const CARTAS_ONLINE = {
   timer: null,
   searching: false,
   matchId: "",
@@ -232,6 +230,7 @@ function cartasStartGame(mode) {
   updateCoins();
 
   // Repartir con animaciones escalonadas
+  startMusic();
   dealInitial();
 }
 
@@ -483,6 +482,8 @@ function endRound() {
   cartasCommitWallet();
   updateCoins();
 
+  stopMusic();
+
   /* ── Mostrar resultado ── */
   setTimeout(() => showResult(outcome, msg, submsg, coinDelta, pTotal, bTotal), 400);
 }
@@ -534,16 +535,16 @@ async function cartasStartOnlineSearch() {
     cartasShowToast('Configura Apps Script para buscar rival.', 'red');
     return;
   }
-  if (ONLINE.searching) return;
-  ONLINE.searching = true;
+  if (CARTAS_ONLINE.searching) return;
+  CARTAS_ONLINE.searching = true;
   document.getElementById('modal-online')?.classList.remove('hidden');
   cartasSetOnlineModal('Buscando jugador...', 'Conectando con un rival registrado. Puedes cancelar la busqueda cuando quieras.', true);
   await cartasPollOnlineMatch();
-  if (ONLINE.searching) ONLINE.timer = window.setInterval(cartasPollOnlineMatch, 1200);
+  if (CARTAS_ONLINE.searching) CARTAS_ONLINE.timer = window.setInterval(cartasPollOnlineMatch, 1200);
 }
 
 async function cartasPollOnlineMatch() {
-  if (!ONLINE.searching) return;
+  if (!CARTAS_ONLINE.searching) return;
   try {
     const result = await Api.apiCasinoJoinGameMatch(Auth.token(), 'cartas-distrito');
     if (result.status === 'matched' && result.match) {
@@ -557,21 +558,21 @@ async function cartasPollOnlineMatch() {
 }
 
 function cartasAcceptOnlineMatch(match) {
-  window.clearInterval(ONLINE.timer);
-  ONLINE.timer = null;
-  ONLINE.searching = false;
-  ONLINE.matchId = match.matchId;
-  ONLINE.mySlot = match.mySlot || 'player';
+  window.clearInterval(CARTAS_ONLINE.timer);
+  CARTAS_ONLINE.timer = null;
+  CARTAS_ONLINE.searching = false;
+  CARTAS_ONLINE.matchId = match.matchId;
+  CARTAS_ONLINE.mySlot = match.mySlot || 'player';
   document.getElementById('modal-online')?.classList.add('hidden');
   cartasShowToast('Rival conectado. Entrando a la partida.', 'green');
   cartasStartGame('online');
 }
 
 async function cartasCancelOnlineSearch(showToastMessage = true) {
-  window.clearInterval(ONLINE.timer);
-  ONLINE.timer = null;
-  const wasSearching = ONLINE.searching;
-  ONLINE.searching = false;
+  window.clearInterval(CARTAS_ONLINE.timer);
+  CARTAS_ONLINE.timer = null;
+  const wasSearching = CARTAS_ONLINE.searching;
+  CARTAS_ONLINE.searching = false;
   document.getElementById('modal-online')?.classList.add('hidden');
   if (wasSearching && typeof Api !== "undefined" && Api.hasConfiguredApiUrl()) {
     try { await Api.apiCasinoCancelGameMatchmaking(Auth.token(), 'cartas-distrito'); } catch {}
@@ -696,10 +697,11 @@ function cartasShowToast(msg, type = 'yellow') {
 function toggleMusic() {
   if (G.musicOn) {
     stopMusic();
-    cartasShowToast('Musica apagada', 'yellow');
+    cartasShowToast('Música apagada', 'yellow');
     return;
   }
   startMusic();
+  cartasShowToast('Música activada', 'green');
 }
 
 function startMusic() {
@@ -710,56 +712,36 @@ function startMusic() {
       G.musicAudio.preload = 'auto';
       G.musicAudio.volume = 0.28;
     }
-    const AudioCtx = window.AudioContext || window.webkitAudioContext;
     G.musicOn = true;
-    G.musicAudio.play().catch(() => {
-      if (!AudioCtx) return;
-      if (!G.musicCtx) G.musicCtx = new AudioCtx();
-      if (G.musicCtx.state === 'suspended') G.musicCtx.resume();
-      playMusicTick();
-      if (G.musicTimer) clearInterval(G.musicTimer);
-      G.musicTimer = setInterval(playMusicTick, 920);
-    });
-    cartasShowToast('Musica activada', 'green');
-  } catch (error) {
-    cartasShowToast('No se pudo activar la musica', 'red');
-  }
-}
-
-function playMusicTick() {
-  if (!G.musicOn || !G.musicCtx) return;
-  const now = G.musicCtx.currentTime;
-  const notes = [196, 247, 294, 247];
-  const note = notes[Math.floor(Date.now() / 920) % notes.length];
-  const osc = G.musicCtx.createOscillator();
-  const gain = G.musicCtx.createGain();
-  osc.type = 'triangle';
-  osc.frequency.setValueAtTime(note, now);
-  gain.gain.setValueAtTime(0.0001, now);
-  gain.gain.exponentialRampToValueAtTime(0.025, now + 0.03);
-  gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.28);
-  osc.connect(gain);
-  gain.connect(G.musicCtx.destination);
-  osc.start(now);
-  osc.stop(now + 0.32);
+    G.musicAudio.currentTime = 0;
+    G.musicAudio.play().catch(() => {});
+    updateCartasMusicBtn(true);
+  } catch (_) {}
 }
 
 function stopMusic() {
-  if (G.musicTimer) clearInterval(G.musicTimer);
-  G.musicTimer = null;
   if (G.musicAudio) {
     G.musicAudio.pause();
     G.musicAudio.currentTime = 0;
   }
   G.musicOn = false;
+  if (G.musicTimer) clearInterval(G.musicTimer);
+  G.musicTimer = null;
+  updateCartasMusicBtn(false);
+}
+
+function updateCartasMusicBtn(playing) {
+  document.querySelectorAll('[data-cartas-music]').forEach(el => {
+    el.textContent = playing ? '🔊 Música' : '🔇 Música';
+  });
 }
 
 /* ──────────────────────────────────────────────────────────────
    MODO ONLINE — ESTRUCTURA PREPARADA
-──────────────────────────────────────────────────────────────
+──────────────────────────────────────────────
   Cuando el backend esté listo, integrar:
 
-  const ONLINE = {
+  const CARTAS_ONLINE = {   // Reemplazar con lógica WS
     roomId:   null,
     playerId: null,   // 'player1' | 'player2'
     ws:       null,   // WebSocket
@@ -818,4 +800,4 @@ window.CartasDistrito = {
   }
 };
 
-window.addEventListener('load', initCartasDistrito);
+// Init is called by router after script load: window.CartasDistrito?.init()

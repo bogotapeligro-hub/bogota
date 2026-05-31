@@ -36,6 +36,7 @@
         <span class="badge-soon">ONLINE</span>
       </button>
       <button class="btn-ghost" onclick="RevolverGame.exitToCasino()">🏠 SALIR AL CASINO</button>
+      <button class="btn-ghost" data-rev-music onclick="RevolverGame.toggleMusic()">🔇 Música</button>
     </div>
 
     <div class="menu-rules-btn" onclick="RevolverGame.toggleRules()">📜 Ver reglas</div>
@@ -124,8 +125,9 @@
     <div class="wait-animation"><div class="spinner"></div></div>
   </div>
 
-  <button class="btn-back" onclick="RevolverGame.exitToCasino()">← Salir al casino</button>
-</div>
+      <button class="btn-back" onclick="RevolverGame.exitToCasino()">← Salir al casino</button>
+      <button class="btn-back" data-rev-music onclick="RevolverGame.toggleMusic()" style="left:auto;right:12px">🔇 Música</button>
+    </div>
 
 <div id="screen-end" class="screen">
   <div class="scanlines"></div>

@@ -12,6 +12,9 @@
   <link rel="stylesheet" href="css/admin.css" />
   <link rel="stylesheet" href="css/casino.css" />
   <link rel="stylesheet" href="css/ruletaBogotana.css" />
+  <link rel="stylesheet" href="css/profile.css" />
+  <link rel="stylesheet" href="css/shorts.css" />
+  <link rel="stylesheet" href="css/notifications.css" />
   <link rel="stylesheet" href="css/responsive.css" />
 </head>
 <body>
@@ -26,7 +29,10 @@
     <nav class="top-actions">
       <button class="ghost-btn" id="rulesShortcut">Reglas</button>
       <button class="ghost-btn chat-shortcut" id="chatShortcut">Chat <span class="chat-badge hidden" id="topChatBadge">0</span></button>
-      <button class="ghost-btn" id="casinoShortcut">¿Quieres jugar?</button>
+      <button class="ghost-btn" id="casinoShortcut">🎰 Jugar</button>
+      <button class="notif-bell-btn" id="notifBell" aria-label="Notificaciones">
+        🔔<span class="notif-badge hidden" data-notif-badge>0</span>
+      </button>
       <span class="role-badge hidden" id="roleBadge"></span>
       <button class="ghost-btn hidden" id="adminShortcut">Panel Admin</button>
       <button class="warning-btn" id="publishShortcut">Publicar</button>
@@ -38,6 +44,14 @@
   <main id="app" class="app-shell"></main>
 
   <a href="#/create-post" class="floating-post-btn" id="floatingPostBtn" aria-label="Crear publicación">+</a>
+
+  <nav class="bottom-nav" id="bottomNav">
+    <a href="#/feed" class="bottom-nav-item" data-nav="feed">🏠<span>Inicio</span></a>
+    <a href="#/shorts" class="bottom-nav-item" data-nav="shorts">🎬<span>Shorts</span></a>
+    <a href="#/chat" class="bottom-nav-item" data-nav="chat">💬<span>Chat</span><span class="bottom-badge hidden" data-chat-badge>0</span></a>
+    <a href="#/casino" class="bottom-nav-item" data-nav="casino">🎰<span>Jugar</span></a>
+    <a href="#/profile" class="bottom-nav-item" data-nav="profile">👤<span>Perfil</span></a>
+  </nav>
 
   <script src="js/config.js"></script>
   <script src="js/ui.js"></script>
@@ -58,6 +72,9 @@
   <script src="js/powersRuleta.js"></script>
   <script src="js/botRuleta.js"></script>
   <script src="js/ruletaBogotana.js"></script>
+  <script src="js/notifications.js"></script>
+  <script src="js/shorts.js"></script>
+  <script src="js/profile.js"></script>
   <script src="js/router.js"></script>
 </body>
 </html>

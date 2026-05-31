@@ -64,6 +64,10 @@ const Comments = (() => {
         appendComment(comment);
         form.reset();
         options.onCreated?.(comment);
+        if (typeof Notifications !== "undefined") {
+          const postTitle = document.querySelector(".post-title")?.textContent || "una publicación";
+          Notifications.add("comment", "Nuevo comentario", `Comentaste en ${postTitle}`, "", "💬");
+        }
         UI.toast("Comentario publicado.", "success");
       } catch (error) {
         UI.toast(error.message, "error");

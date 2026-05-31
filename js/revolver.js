@@ -54,7 +54,7 @@ const STATE = {
   gameAnimFrame:  null,
 };
 
-const ONLINE = {
+const REV_ONLINE = {
   timer: null,
   searching: false,
   matchId: "",
@@ -432,6 +432,7 @@ function revExitToCasino() {
     STATE.gameActive = false;
     revCommitWallet();
   }
+  revStopMusic();
   revCancelOnlineSearch(false);
   stopGameLoop();
   stopMenuLoop();
@@ -522,6 +523,7 @@ function revStartGame(mode) {
   updateCoinDisplay();
 
   // Comenzar
+  revStartMusic();
   setPhase('ppt');
   setTimeout(() => revSetStatus('Cargando tambor…', 'Mezclando suerte…'), 200);
   setTimeout(() => revSetStatus('¡Balas cargadas!', 'Juega Piedra, Papel o Tijera'), 1600);
@@ -539,16 +541,16 @@ async function revStartOnlineSearch() {
     revShowToast('Configura Apps Script para buscar rival.', 'red');
     return;
   }
-  if (ONLINE.searching) return;
-  ONLINE.searching = true;
+  if (REV_ONLINE.searching) return;
+  REV_ONLINE.searching = true;
   document.getElementById('modal-online')?.classList.remove('hidden');
   revSetOnlineModal('Buscando jugador...', 'Conectando con un rival registrado. Puedes cancelar la busqueda cuando quieras.', true);
   await revPollOnlineMatch();
-  if (ONLINE.searching) ONLINE.timer = window.setInterval(revPollOnlineMatch, 1200);
+  if (REV_ONLINE.searching) REV_ONLINE.timer = window.setInterval(revPollOnlineMatch, 1200);
 }
 
 async function revPollOnlineMatch() {
-  if (!ONLINE.searching) return;
+  if (!REV_ONLINE.searching) return;
   try {
     const result = await Api.apiCasinoJoinGameMatch(Auth.token(), 'revolver');
     if (result.status === 'matched' && result.match) {
@@ -562,21 +564,21 @@ async function revPollOnlineMatch() {
 }
 
 function revAcceptOnlineMatch(match) {
-  window.clearInterval(ONLINE.timer);
-  ONLINE.timer = null;
-  ONLINE.searching = false;
-  ONLINE.matchId = match.matchId;
-  ONLINE.mySlot = match.mySlot || 'player';
+  window.clearInterval(REV_ONLINE.timer);
+  REV_ONLINE.timer = null;
+  REV_ONLINE.searching = false;
+  REV_ONLINE.matchId = match.matchId;
+  REV_ONLINE.mySlot = match.mySlot || 'player';
   document.getElementById('modal-online')?.classList.add('hidden');
   revShowToast('Rival conectado. Entrando a la partida.', 'green');
   revStartGame('online');
 }
 
 async function revCancelOnlineSearch(showToastMessage = true) {
-  window.clearInterval(ONLINE.timer);
-  ONLINE.timer = null;
-  const wasSearching = ONLINE.searching;
-  ONLINE.searching = false;
+  window.clearInterval(REV_ONLINE.timer);
+  REV_ONLINE.timer = null;
+  const wasSearching = REV_ONLINE.searching;
+  REV_ONLINE.searching = false;
   document.getElementById('modal-online')?.classList.add('hidden');
   if (wasSearching && typeof Api !== "undefined" && Api.hasConfiguredApiUrl()) {
     try { await Api.apiCasinoCancelGameMatchmaking(Auth.token(), 'revolver'); } catch {}
@@ -953,6 +955,7 @@ function endGame(winner) {
   }
 
   stopGameLoop();
+  revStopMusic();
   revCommitWallet();
   updateCoinDisplay();
 
@@ -1072,6 +1075,47 @@ function stopGameLoop() {
 */
 
 /* ────────────────────────────────────────────────────────────────
+   MÚSICA
+──────────────────────────────────────────────────────────────── */
+let revMusicAudio = null;
+function revInitMusic() {
+  if (revMusicAudio) return revMusicAudio;
+  revMusicAudio = new Audio('music/casino.mp3');
+  revMusicAudio.loop = true;
+  revMusicAudio.preload = 'auto';
+  revMusicAudio.volume = 0.3;
+  return revMusicAudio;
+}
+function revStartMusic() {
+  revInitMusic();
+  revMusicAudio.currentTime = 0;
+  revMusicAudio.play().catch(() => {});
+  updateRevMusicButton(true);
+}
+function revStopMusic() {
+  if (revMusicAudio) {
+    revMusicAudio.pause();
+    revMusicAudio.currentTime = 0;
+  }
+  updateRevMusicButton(false);
+}
+function revToggleMusic() {
+  const btn = document.querySelector('[data-rev-music]');
+  if (revMusicAudio && !revMusicAudio.paused) {
+    revStopMusic();
+    if (btn) btn.textContent = '🔇 Música';
+  } else {
+    revStartMusic();
+    if (btn) btn.textContent = '🔊 Música';
+  }
+}
+function updateRevMusicButton(playing) {
+  document.querySelectorAll('[data-rev-music]').forEach(el => {
+    el.textContent = playing ? '🔊 Música' : '🔇 Música';
+  });
+}
+
+/* ────────────────────────────────────────────────────────────────
    INIT
 ──────────────────────────────────────────────────────────────── */
 let revolverResizeBound = false;
@@ -1106,10 +1150,12 @@ window.RevolverGame = {
   closeModal,
   exitToCasino: revExitToCasino,
   toggleRules: revToggleRules,
+  toggleMusic: revToggleMusic,
   choosePPT,
   chooseShoot,
   restartGame: revRestartGame,
   destroy: () => {
+    revStopMusic();
     revCancelOnlineSearch(false);
     stopGameLoop();
     stopMenuLoop();
@@ -1117,4 +1163,4 @@ window.RevolverGame = {
   }
 };
 
-window.addEventListener('load', initRevolverGame);
+// Init is called by router after script load: window.RevolverGame?.init()

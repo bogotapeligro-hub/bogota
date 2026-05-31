@@ -122,14 +122,19 @@ const UI = (() => {
     `).join("");
   }
 
-  function emptyState(title, message, actionHtml = "") {
+  function emptyState(title, message, actionHtml = "", emoji = "") {
     return `
       <section class="empty-state">
+        ${emoji ? `<div class="empty-emoji">${emoji}</div>` : ""}
         <h2>${escapeHTML(title)}</h2>
         <p>${escapeHTML(message)}</p>
         ${actionHtml}
       </section>
     `;
+  }
+
+  function scrollTop() {
+    window.scrollTo({ top: 0, behavior: "instant" });
   }
 
   function bindGlobalNavigation() {
@@ -155,6 +160,10 @@ const UI = (() => {
       if (event.key === "Escape") closeSidebar();
     });
     window.addEventListener("hashchange", closeSidebar);
+    if (typeof Notifications !== "undefined") {
+      Notifications.bind();
+      Notifications.updateBadge();
+    }
   }
 
   function toggleSidebar(force) {
@@ -182,6 +191,18 @@ const UI = (() => {
       roleBadge.textContent = canModerate ? Auth.roleLabel() : "";
     }
     if (typeof Chat !== "undefined") Chat.updateBadges?.();
+    syncBottomNav();
+  }
+
+  function syncBottomNav() {
+    const nav = document.getElementById("bottomNav");
+    if (!nav) return;
+    const path = (location.hash || "#/feed").replace(/^#/, "").split("?")[0];
+    nav.querySelectorAll(".bottom-nav-item").forEach(item => {
+      const navPath = item.getAttribute("href")?.replace(/^#/, "");
+      const isActive = navPath && (path === navPath || (navPath !== "/feed" && path.startsWith(navPath + "/")));
+      item.classList.toggle("active", isActive);
+    });
   }
 
   function requireSession() {
@@ -208,6 +229,8 @@ const UI = (() => {
     bindGlobalNavigation,
     closeSidebar,
     syncTopbar,
-    requireSession
+    syncBottomNav,
+    requireSession,
+    scrollTop
   };
 })();

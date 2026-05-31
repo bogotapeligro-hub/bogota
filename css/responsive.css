@@ -16,6 +16,10 @@
   .ruleta-log { max-height: 260px; }
 }
 
+@media (min-width: 761px) {
+  .bottom-nav { display: none !important; }
+}
+
 @media (max-width: 760px) {
   :root { --topbar-height: 66px; }
   .mobile-only { display: inline-flex; }
@@ -25,6 +29,7 @@
   .top-actions { gap: 6px; }
   .top-actions .ghost-btn { display: none; }
   .top-actions #logoutBtn:not(.hidden) { display: inline-flex; }
+  .notif-bell-btn { display: inline-flex; }
   .app-shell { padding: 14px 14px calc(88px + env(safe-area-inset-bottom, 0px)); }
   .feed-layout,
   .detail-layout,
@@ -102,6 +107,7 @@
   .report-map-list {
     max-height: none;
   }
+  .bottom-nav { display: flex; }
   .reaction-group { margin-bottom: 8px; }
   .action-btn { margin: 4px 4px 4px 0; }
   .form-grid,
@@ -146,6 +152,23 @@
   .table-3d { min-height: 230px; border-radius: 18px; }
   .duel-device { height: 60px; }
   .power-card { width: 100%; }
+  .profile-page { padding: 0 12px 32px; }
+  .profile-cover { height: 100px; border-radius: 12px; margin-bottom: -36px; }
+  .profile-header { padding: 0 12px; gap: 14px; }
+  .profile-stats { grid-template-columns: repeat(2, 1fr); padding: 20px 12px 16px; gap: 8px; }
+  .profile-tab-bar { padding: 0 12px; }
+  .profile-content { padding: 0 12px; }
+  .profile-username { font-size: 1.3rem; }
+  .chat-layout-inner { grid-template-columns: 1fr; }
+  .chat-conversations { border-radius: var(--radius-lg); max-height: 300px; }
+  .chat-panel-placeholder { display: none; }
+  .chat-sidebar { display: none; }
+  .casino-stats-row { flex-direction: column; align-items: stretch; }
+  .casino-stat-card { width: 100%; }
+  .notif-panel { width: 300px; right: 0; }
+  .shorts-column { max-width: 100%; }
+  .short-upload-box { flex-direction: column; }
+  .short-upload-avatar { display: none; }
 }
 
 @keyframes sidebarScrimIn {

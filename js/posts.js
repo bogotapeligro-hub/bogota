@@ -154,6 +154,12 @@ const Posts = (() => {
     if (typeof Chat !== "undefined") Chat.rememberUser?.(post);
     const tags = parseTags(post.tags);
     const safePostId = UI.escapeHTML(post.postId);
+    const username = post.username || "usuario";
+    const safeUser = UI.escapeHTML(username);
+    const avatarHtml = typeof Profile !== "undefined" ? Profile.renderAvatar(username, 36) : "";
+    const savedPosts = JSON.parse(localStorage.getItem("bau_saved_posts") || "[]");
+    const isSaved = savedPosts.includes(post.postId);
+    const saveLabel = isSaved ? "★" : "☆";
     const isAdminControls = Auth.isAdminOrModerator() ? `
       <div class="admin-inline-controls">
         <span class="status-badge status-${UI.escapeHTML(post.status)}">Moderacion</span>
@@ -167,9 +173,12 @@ const Posts = (() => {
     return `
       <article class="post-card post-card-openable" data-post-id="${safePostId}" data-open-post="${safePostId}" tabindex="0" role="button" aria-label="Abrir publicacion ${UI.escapeHTML(post.title)}">
         <div class="post-head">
-          <div>
-            <a class="user-link" href="#/profile/${encodeURIComponent(post.userId || post.username)}" data-user-link>@${UI.escapeHTML(post.username)}</a>
-            <span class="muted">${UI.formatDate(post.createdAt)}</span>
+          <div class="post-head-left">
+            <a class="post-avatar-link" href="#/profile/${encodeURIComponent(post.userId || username)}">${avatarHtml}</a>
+            <div>
+              <a class="user-link" href="#/profile/${encodeURIComponent(post.userId || username)}" data-user-link>@${safeUser}</a>
+              <span class="muted">${UI.formatDate(post.createdAt)}</span>
+            </div>
           </div>
           <span class="category-pill ${categoryClass(post.category)}">${UI.escapeHTML(post.category)}</span>
         </div>
@@ -187,7 +196,8 @@ const Posts = (() => {
         <div class="post-actions">
           ${Reactions.renderButtons("post", post.postId)}
           <button class="action-btn" data-comment-open="${safePostId}">Comentar</button>
-          <button class="action-btn" data-share-post="${safePostId}">Compartir</button>
+          <button class="action-btn action-save" data-save-post="${safePostId}" data-saved="${isSaved ? "1" : "0"}">${saveLabel}</button>
+          <button class="action-btn action-share" data-share-post="${safePostId}">Compartir</button>
           <button class="action-btn danger" data-report-target="post" data-target-id="${safePostId}">Reportar</button>
         </div>
         ${isAdminControls}
@@ -494,12 +504,42 @@ const Posts = (() => {
     root.querySelectorAll("[data-share-post]").forEach((button) => {
       button.addEventListener("click", async () => {
         const url = `${location.origin}${location.pathname}#/post/${button.dataset.sharePost}`;
-        try {
-          await navigator.clipboard.writeText(url);
-          UI.toast("Enlace copiado.", "success");
-        } catch {
-          UI.toast("No se pudo copiar. Copia la URL desde la barra del navegador.", "warning");
+        if (navigator.share) {
+          try {
+            await navigator.share({ title: "Bogotá Alerta Urbana", url });
+          } catch {
+            // user cancelled
+          }
+        } else {
+          try {
+            await navigator.clipboard.writeText(url);
+            UI.toast("Enlace copiado.", "success");
+          } catch {
+            UI.toast("No se pudo copiar. Copia la URL desde la barra del navegador.", "warning");
+          }
         }
+      });
+    });
+  }
+
+  function bindSaveButtons(root = document) {
+    root.querySelectorAll("[data-save-post]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const postId = button.dataset.savePost;
+        let saved = JSON.parse(localStorage.getItem("bau_saved_posts") || "[]");
+        const idx = saved.indexOf(postId);
+        if (idx > -1) {
+          saved.splice(idx, 1);
+          button.textContent = "☆";
+          button.dataset.saved = "0";
+          UI.toast("Publicación removida de guardados.", "info");
+        } else {
+          saved.push(postId);
+          button.textContent = "★";
+          button.dataset.saved = "1";
+          UI.toast("Publicación guardada.", "success");
+        }
+        localStorage.setItem("bau_saved_posts", JSON.stringify(saved));
       });
     });
   }
@@ -538,6 +578,7 @@ const Posts = (() => {
     bindCreatePost,
     bindReportButtons,
     bindShareButtons,
+    bindSaveButtons,
     bindAdminInline,
     parseTags
   };

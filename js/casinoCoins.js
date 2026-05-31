@@ -123,12 +123,19 @@ const CasinoCoins = (() => {
     const next = setCoins(getCoins() + CASINO_WIN_REWARD);
     renderCoinBalance(document);
     flashCoinUi("coin-gain-animation");
+    if (typeof Notifications !== "undefined") {
+      Notifications.add("game", "¡Victoria!", `Ganaste ${CASINO_WIN_REWARD} moneda${CASINO_WIN_REWARD !== 1 ? "s" : ""} en el casino`, "#/casino", "🏆");
+    }
+    if (typeof Profile !== "undefined") Profile.trackGameWon();
     return next;
   }
 
   function handleLoss() {
     regenCoins();
     renderCoinBalance(document);
+    if (typeof Notifications !== "undefined") {
+      Notifications.add("game", "Derrota", "Perdiste la partida. ¡Intenta de nuevo!", "#/casino", "💔");
+    }
   }
 
   function renderCoinBalance(root = document) {

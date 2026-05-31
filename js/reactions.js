@@ -33,6 +33,9 @@ const Reactions = (() => {
           await Api.apiReact(Auth.token(), button.dataset.targetType, button.dataset.targetId, button.dataset.reaction);
           buttons.forEach((item) => item.classList.remove("selected"));
           button.classList.add("selected");
+          if (typeof Notifications !== "undefined") {
+            Notifications.add("reaction", "Reacción enviada", `Reaccionaste: ${button.dataset.reaction}`, "", emoji[button.dataset.reaction] || "⚡");
+          }
           UI.toast(`Reaccionaste: ${button.dataset.reaction}`, "success");
         } catch (error) {
           UI.toast(error.message, "error");

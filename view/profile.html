@@ -1,14 +1,25 @@
-<div class="feed-layout single-form-layout">
-  <aside class="left-sidebar">
-    <div class="sidebar-card">
-      <a class="side-link" href="#/feed">Inicio</a>
-      <a class="side-link" href="#/create-post">Publicar</a>
-      <a class="side-link active" href="#/profile">Perfil</a>
+<section class="profile-page">
+  <div class="profile-cover"></div>
+  <div class="profile-header">
+    <div class="profile-avatar-wrap" id="profileAvatarWrap"></div>
+    <div class="profile-info">
+      <h1 class="profile-username" id="profileUsername">—</h1>
+      <p class="profile-role" id="profileRole">Vecino</p>
+      <p class="profile-bio" id="profileBio">Sin biografía aún.</p>
+      <button class="warning-btn profile-edit-btn" id="editProfileBtn">Editar perfil</button>
     </div>
-  </aside>
-  <section class="form-card">
-    <span class="badge-alert">Perfil</span>
-    <h1>Tu cuenta</h1>
-    <div id="profileBox"></div>
-  </section>
-</div>
+  </div>
+  <div class="profile-stats" id="profileStats">
+    <div class="stat-card"><strong id="statPosts">0</strong><span>Publicaciones</span></div>
+    <div class="stat-card"><strong id="statReactions">0</strong><span>Reacciones</span></div>
+    <div class="stat-card"><strong id="statCoins">0</strong><span>Monedas</span></div>
+    <div class="stat-card"><strong id="statGames">0</strong><span>Juegos ganados</span></div>
+  </div>
+  <div class="profile-tab-bar">
+    <button class="profile-tab active" data-tab="posts">Tus publicaciones</button>
+    <button class="profile-tab" data-tab="saved">Guardados</button>
+  </div>
+  <div class="profile-content" id="profileContent">
+    <div class="loading-skeleton">Cargando publicaciones...</div>
+  </div>
+</section>

@@ -37,8 +37,8 @@ const Chat = (() => {
     return [String(a), String(b)].sort().join("__");
   }
 
-  function avatar(username = "") {
-    return UI.escapeHTML(String(username || "?").slice(0, 2).toUpperCase());
+  function getConversationLabel(cid, userId) {
+    return cid.split("__").find(part => part !== userId) || cid;
   }
 
   function rememberUser(user = {}) {
@@ -193,9 +193,10 @@ const Chat = (() => {
   }
 
   function renderMessage(message, mine = false) {
+    const avatarEl = typeof Profile !== "undefined" ? Profile.renderAvatar(message.fromUsername, 32) : `<div class="chat-avatar-initials">${UI.escapeHTML(String(message.fromUsername || "?").slice(0, 2).toUpperCase())}</div>`;
     return `
       <article class="chat-message ${mine ? "mine" : "theirs"}" data-message-id="${UI.escapeHTML(message.messageId)}">
-        <a class="chat-avatar" href="#/profile/${encodeURIComponent(message.fromUserId || message.fromUsername)}">${avatar(message.fromUsername)}</a>
+        <a class="chat-avatar-link" href="#/profile/${encodeURIComponent(message.fromUserId || message.fromUsername)}">${avatarEl}</a>
         <div class="chat-bubble">
           <div class="chat-meta">
             <a href="#/profile/${encodeURIComponent(message.fromUserId || message.fromUsername)}">@${UI.escapeHTML(message.fromUsername || "usuario")}</a>
@@ -203,10 +204,145 @@ const Chat = (() => {
           </div>
           ${message.mediaType === "image" && message.mediaUrl ? `<a href="${UI.escapeHTML(message.mediaUrl)}" target="_blank" rel="noopener"><img class="chat-image" src="${UI.escapeHTML(message.mediaUrl)}" alt="Imagen enviada por ${UI.escapeHTML(message.fromUsername || "usuario")}"></a>` : ""}
           <p>${UI.escapeHTML(message.text)}</p>
-          ${message.status ? `<small>${UI.escapeHTML(message.status)}</small>` : ""}
+          ${message.status ? `<small class="chat-status">${UI.escapeHTML(message.status)}</small>` : ""}
         </div>
       </article>
     `;
+  }
+
+  function renderConversationList() {
+    const user = currentUser();
+    if (!user) return;
+    const userId = safeUserId(user);
+    const allPrivate = readJson(PRIVATE_KEY, {});
+    const globalCount = unreadCounts().global;
+
+    const conversations = Object.entries(allPrivate)
+      .filter(([cid]) => cid.includes(userId))
+      .map(([cid, messages]) => {
+        const peerId = getConversationLabel(cid, userId);
+        const lastMsg = messages[messages.length - 1];
+        const lastRead = getLastRead("private", peerId);
+        const unread = messages.filter(msg =>
+          msg.fromUserId !== userId && msg.toUserId === userId && (!lastRead || new Date(msg.createdAt) > new Date(lastRead))
+        ).length;
+        const peerName = lastMsg
+          ? (lastMsg.fromUserId === peerId ? lastMsg.fromUsername : lastMsg.toUsername)
+          : peerId;
+        return { cid, peerId, peerName, lastMsg, unread };
+      })
+      .sort((a, b) => {
+        const aTime = a.lastMsg ? new Date(a.lastMsg.createdAt).getTime() : 0;
+        const bTime = b.lastMsg ? new Date(b.lastMsg.createdAt).getTime() : 0;
+        return bTime - aTime;
+      });
+
+    return `
+      <div class="chat-layout-inner">
+        <aside class="chat-conversations">
+          <div class="chat-conv-header">
+            <h2>Chats</h2>
+            <span class="chat-global-badge" data-chat-badge>${Math.min(globalCount, 99)}</span>
+          </div>
+          <a class="chat-conv-item ${location.hash === "#/chat-global" ? "active" : ""}" href="#/chat-global">
+            <div class="chat-conv-avatar">💬</div>
+            <div class="chat-conv-info">
+              <strong>Chat Global</strong>
+              <small>Comunidad en vivo</small>
+            </div>
+            ${globalCount > 0 ? `<span class="chat-unread-badge">${Math.min(globalCount, 99)}</span>` : ""}
+          </a>
+          <div class="chat-conv-divider">Mensajes privados</div>
+          ${conversations.length === 0 ? `
+            <div class="chat-conv-empty">
+              <span class="chat-conv-empty-icon">💌</span>
+              <p>Todavía no tienes conversaciones privadas</p>
+              <small>Ve al perfil de un usuario y haz clic en "Mensaje"</small>
+            </div>
+          ` : conversations.map(conv => `
+            <a class="chat-conv-item ${location.hash === `#/chat/${encodeURIComponent(conv.peerId)}` ? "active" : ""}" href="#/chat/${encodeURIComponent(conv.peerId)}">
+              <div class="chat-conv-avatar">${typeof Profile !== "undefined" ? Profile.renderAvatar(conv.peerName, 36) : `<span class="chat-avatar-init">${UI.escapeHTML(conv.peerName.slice(0, 2).toUpperCase())}</span>`}</div>
+              <div class="chat-conv-info">
+                <strong>@${UI.escapeHTML(conv.peerName)}</strong>
+                <small>${conv.lastMsg ? UI.escapeHTML(conv.lastMsg.text.slice(0, 40)) + (conv.lastMsg.text.length > 40 ? "..." : "") : "Sin mensajes"}</small>
+              </div>
+              <div class="chat-conv-meta">
+                ${conv.lastMsg ? `<span class="chat-conv-time">${formatTimeAgo(conv.lastMsg.createdAt)}</span>` : ""}
+                ${conv.unread > 0 ? `<span class="chat-unread-badge">${Math.min(conv.unread, 99)}</span>` : ""}
+              </div>
+            </a>
+          `).join("")}
+        </aside>
+        <section class="chat-panel-placeholder">
+          <div class="chat-placeholder-inner">
+            <span class="chat-placeholder-icon">💬</span>
+            <h3>Selecciona un chat</h3>
+            <p>Elige una conversación de la lista para comenzar</p>
+          </div>
+        </section>
+      </div>
+    `;
+  }
+
+  function renderConversationsSidebar() {
+    const user = currentUser();
+    if (!user) return "";
+    const userId = safeUserId(user);
+    const allPrivate = readJson(PRIVATE_KEY, {});
+
+    const items = Object.entries(allPrivate)
+      .filter(([cid]) => cid.includes(userId))
+      .map(([cid, messages]) => {
+        const peerId = getConversationLabel(cid, userId);
+        const lastMsg = messages[messages.length - 1];
+        const lastRead = getLastRead("private", peerId);
+        const unread = messages.filter(msg =>
+          msg.fromUserId !== userId && msg.toUserId === userId && (!lastRead || new Date(msg.createdAt) > new Date(lastRead))
+        ).length;
+        const peerName = lastMsg
+          ? (lastMsg.fromUserId === peerId ? lastMsg.fromUsername : lastMsg.toUsername)
+          : peerId;
+        return { peerId, peerName, lastMsg, unread };
+      })
+      .sort((a, b) => {
+        const aTime = a.lastMsg ? new Date(a.lastMsg.createdAt).getTime() : 0;
+        return bTime - aTime;
+      });
+
+    return `<aside class="chat-sidebar">
+      <div class="chat-sidebar-header">
+        <h3>Conversaciones</h3>
+        <a href="#/chat" class="chat-sidebar-all">Ver todas</a>
+      </div>
+      ${items.length === 0 ? `
+        <div class="chat-sidebar-empty">
+          <p>Sin conversaciones aún</p>
+          <small>Envía un mensaje desde un perfil</small>
+        </div>
+      ` : items.slice(0, 5).map(conv => `
+        <a class="chat-sidebar-item" href="#/chat/${encodeURIComponent(conv.peerId)}">
+          <div class="chat-sidebar-avatar">${typeof Profile !== "undefined" ? Profile.renderAvatar(conv.peerName, 28) : ""}</div>
+          <div class="chat-sidebar-info">
+            <strong>@${UI.escapeHTML(conv.peerName)}</strong>
+            <small>${conv.lastMsg ? UI.escapeHTML(conv.lastMsg.text.slice(0, 25)) + (conv.lastMsg.text.length > 25 ? "..." : "") : ""}</small>
+          </div>
+          ${conv.unread > 0 ? `<span class="chat-unread-badge small">${Math.min(conv.unread, 9)}</span>` : ""}
+        </a>
+      `).join("")}
+    </aside>`;
+  }
+
+  function formatTimeAgo(isoString) {
+    if (!isoString) return "";
+    const diff = Date.now() - new Date(isoString).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return "Ahora";
+    if (mins < 60) return `${mins}m`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h`;
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days}d`;
+    return new Date(isoString).toLocaleDateString("es-CO", { day: "numeric", month: "short" });
   }
 
   async function renderGlobal() {
@@ -214,22 +350,25 @@ const Chat = (() => {
     UI.renderApp(`
       <div class="feed-layout chat-layout">
         ${Feed.sidebar("Chat")}
-        <section class="chat-panel" data-chat-scope="global">
-          <header class="chat-header">
-            <div><span class="badge-alert">Comunidad</span><h1>Chat Global</h1></div>
-            <a class="ghost-btn" href="#/feed">Volver</a>
-          </header>
-          <div id="chatMessages" class="chat-messages">${UI.skeletonPosts(1)}</div>
-          <form id="globalChatForm" class="chat-compose">
-            <input name="message" maxlength="700" autocomplete="off" placeholder="Escribe un mensaje para la comunidad..." />
-            <label class="chat-image-button" title="Adjuntar imagen">
-              <input type="file" name="image" accept="image/*" />
-              Imagen
-            </label>
-            <button class="warning-btn" type="submit">Enviar</button>
-            <div class="chat-image-preview hidden" data-chat-image-preview></div>
-          </form>
-        </section>
+        <div class="chat-layout-inner">
+          <section class="chat-panel" data-chat-scope="global">
+            <header class="chat-header">
+              <div><span class="badge-alert">Comunidad</span><h1>Chat Global</h1></div>
+              <a class="ghost-btn" href="#/chat">Volver</a>
+            </header>
+            <div id="chatMessages" class="chat-messages">${UI.skeletonPosts(1)}</div>
+            <form id="globalChatForm" class="chat-compose">
+              <input name="message" maxlength="700" autocomplete="off" placeholder="Escribe un mensaje para la comunidad..." />
+              <label class="chat-image-button" title="Adjuntar imagen">
+                <input type="file" name="image" accept="image/*" />
+                📷
+              </label>
+              <button class="warning-btn" type="submit">Enviar</button>
+              <div class="chat-image-preview hidden" data-chat-image-preview></div>
+            </form>
+          </section>
+          ${renderConversationsSidebar()}
+        </div>
       </div>
     `);
     await refreshGlobalMessages(true);
@@ -245,7 +384,7 @@ const Chat = (() => {
     const userId = safeUserId();
     box.innerHTML = messages.length
       ? messages.map(message => renderMessage(message, message.fromUserId === userId)).join("")
-      : `<div class="chat-empty">No hay mensajes todavia. Empieza la conversacion.</div>`;
+      : `<div class="chat-empty">No hay mensajes todavía. Empieza la conversación.</div>`;
     if (scroll) box.scrollTop = box.scrollHeight;
   }
 
@@ -276,7 +415,7 @@ const Chat = (() => {
     if (!UI.requireSession()) return;
     const peer = await resolvePeer(peerId);
     if (!peer?.userId) {
-      UI.renderApp(UI.emptyState("Usuario no encontrado", "No se pudo abrir esta conversacion.", `<a class="warning-btn inline-btn" href="#/feed">Volver</a>`));
+      UI.renderApp(UI.emptyState("Usuario no encontrado", "No se pudo abrir esta conversación.", `<a class="warning-btn inline-btn" href="#/chat">Volver</a>`));
       return;
     }
     if (peer.userId === safeUserId()) {
@@ -287,22 +426,31 @@ const Chat = (() => {
     UI.renderApp(`
       <div class="feed-layout chat-layout">
         ${Feed.sidebar("Chat")}
-        <section class="chat-panel" data-chat-scope="private" data-peer-id="${UI.escapeHTML(peer.userId)}" data-peer-name="${UI.escapeHTML(peer.username)}">
-          <header class="chat-header">
-            <div><span class="badge-alert">Mensaje privado</span><h1>@${UI.escapeHTML(peer.username)}</h1></div>
-            <a class="ghost-btn" href="#/profile/${encodeURIComponent(peer.userId)}">Perfil</a>
-          </header>
-          <div id="chatMessages" class="chat-messages">${UI.skeletonPosts(1)}</div>
-          <form id="privateChatForm" class="chat-compose">
-            <input name="message" maxlength="700" autocomplete="off" placeholder="Escribe un mensaje privado..." />
-            <label class="chat-image-button" title="Adjuntar imagen">
-              <input type="file" name="image" accept="image/*" />
-              Imagen
-            </label>
-            <button class="warning-btn" type="submit">Enviar</button>
-            <div class="chat-image-preview hidden" data-chat-image-preview></div>
-          </form>
-        </section>
+        <div class="chat-layout-inner">
+          ${renderConversationsSidebar()}
+          <section class="chat-panel" data-chat-scope="private" data-peer-id="${UI.escapeHTML(peer.userId)}" data-peer-name="${UI.escapeHTML(peer.username)}">
+            <header class="chat-header">
+              <div class="chat-header-peer">
+                <a href="#/profile/${encodeURIComponent(peer.userId)}" class="chat-header-avatar">${typeof Profile !== "undefined" ? Profile.renderAvatar(peer.username, 36) : ""}</a>
+                <div>
+                  <h1>@${UI.escapeHTML(peer.username)}</h1>
+                  <span class="chat-header-status">En línea</span>
+                </div>
+              </div>
+              <a class="ghost-btn" href="#/profile/${encodeURIComponent(peer.userId)}">Perfil</a>
+            </header>
+            <div id="chatMessages" class="chat-messages">${UI.skeletonPosts(1)}</div>
+            <form id="privateChatForm" class="chat-compose">
+              <input name="message" maxlength="700" autocomplete="off" placeholder="Escribe un mensaje privado..." />
+              <label class="chat-image-button" title="Adjuntar imagen">
+                <input type="file" name="image" accept="image/*" />
+                📷
+              </label>
+              <button class="warning-btn" type="submit">Enviar</button>
+              <div class="chat-image-preview hidden" data-chat-image-preview></div>
+            </form>
+          </section>
+        </div>
       </div>
     `);
     await refreshPrivateMessages(peer, true);
@@ -350,7 +498,7 @@ const Chat = (() => {
     const userId = safeUserId();
     box.innerHTML = messages.length
       ? messages.map(message => renderMessage(message, message.fromUserId === userId)).join("")
-      : `<div class="chat-empty">No hay mensajes todavia. Empieza la conversacion.</div>`;
+      : `<div class="chat-empty">No hay mensajes todavía. Empieza la conversación.</div>`;
     if (scroll) box.scrollTop = box.scrollHeight;
   }
 
@@ -483,10 +631,16 @@ const Chat = (() => {
     const counts = unreadCounts();
     if (counts.total <= 0 || Date.now() - lastToastAt < 5000) return;
     const path = (location.hash || "").replace(/^#/, "").split("?")[0];
-    if (path !== "/chat" && counts.global > 0) {
+    if (path !== "/chat" && path !== "/chat-global" && counts.global > 0) {
+      if (typeof Notifications !== "undefined") {
+        Notifications.add("chat", "Chat global", "Hay mensajes nuevos en el chat comunitario", "#/chat-global", "💬");
+      }
       UI.toast("Hay mensajes nuevos en el chat global.", "info");
       lastToastAt = Date.now();
     } else if (counts.private > 0 && !path.startsWith("/chat/")) {
+      if (typeof Notifications !== "undefined") {
+        Notifications.add("chat", "Mensaje privado", "Tienes mensajes privados sin leer", "#/chat", "✉️");
+      }
       UI.toast("Tienes mensajes privados nuevos.", "info");
       lastToastAt = Date.now();
     }
@@ -517,5 +671,5 @@ const Chat = (() => {
     startPolling();
   });
 
-  return { renderGlobal, renderPrivate, updateBadges, markRead, collectKnownUsers, rememberUser };
+  return { renderGlobal, renderPrivate, renderConversationList, renderConversationsSidebar, updateBadges, markRead, collectKnownUsers, rememberUser };
 })();

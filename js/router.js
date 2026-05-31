@@ -8,8 +8,11 @@ const Router = (() => {
     "/ruleta-bogotana": { view: "ruleta-bogotana", auth: true, bind: () => RuletaBogotana.init() },
     "/revolver": { custom: () => renderLinkedGame("revolver", "css/revolver.css", "js/revolver.js", () => window.RevolverGame?.init()), auth: true },
     "/cartas-distrito": { custom: () => renderLinkedGame("cartas-distrito", "css/cartas.css", "js/cartas.js", () => window.CartasDistrito?.init()), auth: true },
+    "/poker-fichas": { custom: () => renderLinkedGame("poker-fichas", "css/pokerFichas.css", "js/pokerFichas.js", () => window.PokerFichas?.init()), auth: true },
     "/profile": { custom: () => renderProfile(), auth: true },
-    "/chat": { custom: () => Chat.renderGlobal(), auth: true },
+    "/chat": { custom: () => renderChatList(), auth: true },
+    "/chat-global": { custom: () => Chat.renderGlobal(), auth: true },
+    "/shorts": { custom: () => Shorts.render(), auth: true },
     "/mapa": { custom: () => MapaReportes.render(), auth: true },
     "/rules": { view: "rules" },
     "/admin": { view: "admin", auth: true, moderation: true, bind: () => Admin.initAdminPanel() }
@@ -30,8 +33,8 @@ const Router = (() => {
     const path = currentPath();
     if (path.startsWith("/post/")) return renderPostDetail(decodeURIComponent(path.replace("/post/", "")));
     if (path.startsWith("/profile/")) return renderProfile(decodeURIComponent(path.replace("/profile/", "")));
-    if (path.startsWith("/chat/")) return Chat.renderPrivate(decodeURIComponent(path.replace("/chat/", "")));
-    if (!["/revolver", "/cartas-distrito"].includes(path)) clearGameStyles();
+    if (path.startsWith("/chat/") && path !== "/chat-global") return Chat.renderPrivate(decodeURIComponent(path.replace("/chat/", "")));
+    if (!["/revolver", "/cartas-distrito", "/poker-fichas"].includes(path)) clearGameStyles();
     const route = routes[path] || routes["/feed"];
     if (route.auth && !UI.requireSession()) return;
     if (route.moderation && !Auth.isAdminOrModerator()) {
@@ -49,6 +52,7 @@ const Router = (() => {
   function clearGameStyles() {
     window.RevolverGame?.destroy?.();
     window.CartasDistrito?.destroy?.();
+    window.PokerFichas?.destroy?.();
     document.querySelectorAll(".modal-overlay, #no-coins-modal").forEach(el => el.remove());
     document.body.style.overflow = "";
     document.documentElement.style.overflow = "";
@@ -154,12 +158,16 @@ const Router = (() => {
   async function renderProfile(userIdOrUsername = "") {
     if (!UI.requireSession()) return;
     const self = Auth.user();
-    const requested = String(userIdOrUsername || self?.userId || "");
+    const requested = String(userIdOrUsername || self?.userId || self?.username || "");
     const html = await UI.loadView("profile");
     UI.renderApp(html);
-    const box = document.getElementById("profileBox");
-    if (!box || !self) return;
-    box.innerHTML = UI.skeletonPosts(1);
+    const avatarWrap = document.getElementById("profileAvatarWrap");
+    const usernameEl = document.getElementById("profileUsername");
+    const roleEl = document.getElementById("profileRole");
+    const bioEl = document.getElementById("profileBio");
+    const statsEl = document.getElementById("profileStats");
+    const contentEl = document.getElementById("profileContent");
+    if (!usernameEl || !contentEl) return;
 
     const isViewingSelf = !requested || requested === self.userId || requested === self.username;
     let profileUser = isViewingSelf
@@ -168,10 +176,6 @@ const Router = (() => {
     let posts = [];
     let profileError = "";
     try {
-      const known = typeof Chat !== "undefined"
-        ? Chat.collectKnownUsers().find(user => user.userId === requested || user.username === requested)
-        : null;
-      if (known) profileUser = { ...profileUser, ...known, role: profileUser.role || "user", status: profileUser.status || "active" };
       if (!isViewingSelf && Api.apiGetUserProfile && Api.hasConfiguredApiUrl()) {
         const result = await Api.apiGetUserProfile(Auth.token(), requested);
         profileUser = result.user || profileUser;
@@ -180,39 +184,91 @@ const Router = (() => {
         const result = await Api.apiListPosts();
         posts = (result.posts || []).filter(post => String(post.userId) === String(profileUser.userId) || post.username === profileUser.username);
       }
-      if (!posts.length && !isViewingSelf && (!Api.apiGetUserProfile || !Api.hasConfiguredApiUrl())) {
-        const result = await Api.apiListPosts();
-        posts = (result.posts || []).filter(post => String(post.userId) === String(profileUser.userId) || post.username === profileUser.username);
-      }
     } catch (error) {
       profileError = String(error.message || "");
-      posts = [];
     }
 
     const isSelf = String(profileUser.userId) === String(self.userId) || String(profileUser.username) === String(self.username);
-    const chatButton = !isSelf
-      ? `<a class="warning-btn inline-btn" href="#/chat/${encodeURIComponent(profileUser.userId || profileUser.username)}">Chatear</a>`
-      : "";
-    box.innerHTML = `
-      <div class="profile-card expanded-profile">
-        <div class="avatar">${UI.escapeHTML(profileUser.username?.slice(0, 2).toUpperCase() || "BA")}</div>
-        <div class="profile-main">
-          <h2>@${UI.escapeHTML(profileUser.username)}</h2>
-          <p>Rol: <strong>${UI.escapeHTML(profileUser.role || "user")}</strong></p>
-          <p>Estado: <strong>${UI.escapeHTML(profileUser.status || "active")}</strong></p>
-          <div class="profile-actions">
-            ${chatButton}
-            ${isSelf && Auth.isAdminOrModerator() ? `<a class="warning-btn inline-btn" href="#/admin">${Auth.isAdmin() ? "Abrir panel admin" : "Abrir moderacion"}</a>` : ""}
-          </div>
-        </div>
-      </div>
-      <section class="profile-posts">
-        <h2>Publicaciones</h2>
-        ${profileError ? `<p class="muted">Perfil cargado con datos locales. Para ver publicaciones completas de este usuario, actualiza el backend.</p>` : ""}
-        ${posts.length ? posts.map(post => Posts.card(post, true)).join("") : `<p class="muted">No hay publicaciones para mostrar.</p>`}
-      </section>
-    `;
+    const username = profileUser.username || "usuario";
+
+    if (avatarWrap) {
+      avatarWrap.innerHTML = Profile.renderAvatar(username, 80);
+    }
+    if (usernameEl) usernameEl.textContent = `@${username}`;
+    if (roleEl) roleEl.textContent = profileUser.role || "Vecino";
+    if (bioEl) {
+      const bio = isViewingSelf ? Profile.getBio() : profileUser.bio || "Sin biografía.";
+      bioEl.textContent = bio;
+    }
+
+    if (statsEl && isViewingSelf) {
+      const stats = Profile.getStats();
+      statsEl.querySelector("#statPosts").textContent = stats.posts || posts.length;
+      statsEl.querySelector("#statReactions").textContent = stats.reactions || 0;
+      const coins = typeof CasinoCoins !== "undefined" ? CasinoCoins.getCoins() : 0;
+      statsEl.querySelector("#statCoins").textContent = coins;
+      statsEl.querySelector("#statGames").textContent = stats.games || 0;
+    }
+
+    if (!isViewingSelf) {
+      document.getElementById("editProfileBtn")?.remove();
+    }
+
+    const activePosts = posts.filter(p => p.status === "active").sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    _cachedProfilePosts = activePosts;
+    contentEl.innerHTML = activePosts.length
+      ? activePosts.map(post => Posts.card(post)).join("")
+      : UI.emptyState("Sin publicaciones", profileError || "Este usuario no ha publicado aún.", "", "📭");
+
     Feed.bindFeedActions();
+    Profile.bind();
+    bindProfileTabs();
+  }
+
+  function renderChatList() {
+    if (!UI.requireSession()) return;
+    const html = Chat.renderConversationList();
+    const sidebar = Feed.sidebar("Chat");
+    UI.renderApp(`
+      <div class="feed-layout chat-layout">
+        ${sidebar}
+        ${html}
+      </div>
+    `);
+    Notifications.bind();
+  }
+
+  let _cachedProfilePosts = [];
+
+  function bindProfileTabs() {
+    const tabs = document.querySelectorAll(".profile-tab");
+    tabs.forEach(tab => {
+      tab.addEventListener("click", () => {
+        tabs.forEach(t => t.classList.remove("active"));
+        tab.classList.add("active");
+        const tabName = tab.dataset.tab;
+        const content = document.getElementById("profileContent");
+        if (!content) return;
+        if (tabName === "saved") {
+          const saved = JSON.parse(localStorage.getItem("bau_saved_posts") || "[]");
+          if (!saved.length) {
+            content.innerHTML = UI.emptyState("Sin guardados", "No has guardado ninguna publicación todavía. Usa el botón bookmark en las publicaciones.", "", "🔖");
+            return;
+          }
+          content.innerHTML = `<div class="loading-skeleton">Cargando guardados...</div>`;
+          Api.apiListPosts().then(result => {
+            const allPosts = (result.posts || []).map(Posts.sanitizePostData);
+            const savedPosts = allPosts.filter(p => saved.includes(p.postId));
+            content.innerHTML = savedPosts.length
+              ? savedPosts.map(post => Posts.card(post)).join("")
+              : UI.emptyState("Sin guardados", "Las publicaciones guardadas ya no están disponibles.", "", "🔖");
+            Feed.bindFeedActions();
+          }).catch(() => {
+            content.innerHTML = UI.emptyState("Error", "No se pudieron cargar las publicaciones guardadas.");
+          });
+        }
+      });
+    });
   }
 
   function reload() { render(); }

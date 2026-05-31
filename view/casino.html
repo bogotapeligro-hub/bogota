@@ -24,6 +24,30 @@
     Este modo no usa dinero real, apuestas reales, criptomonedas ni premios económicos.
   </div>
 
+  <div class="casino-stats-row">
+    <div class="casino-stat-card">
+      <span class="casino-stat-icon">💰</span>
+      <div>
+        <strong id="casinoMyCoins">0</strong>
+        <small>Tus monedas</small>
+      </div>
+    </div>
+    <div class="casino-stat-card">
+      <span class="casino-stat-icon">🏆</span>
+      <div>
+        <strong id="casinoGamesWon">0</strong>
+        <small>Juegos ganados</small>
+      </div>
+    </div>
+    <div class="casino-stat-card">
+      <span class="casino-stat-icon">🎮</span>
+      <div>
+        <strong id="casinoGamesPlayed">0</strong>
+        <small>Partidas jugadas</small>
+      </div>
+    </div>
+  </div>
+
   <main class="casino-games-section">
     <h2 class="section-title">Elige tu juego</h2>
     <p class="section-sub">Mesa abierta, monedas virtuales y mayores de 18 años</p>
@@ -31,6 +55,11 @@
     <div class="games-grid">
       <article class="game-card game-active" id="card-escopeta">
         <div class="game-card-glow"></div>
+        <div class="game-chips">
+          <span class="chip-3d chip-red"></span>
+          <span class="chip-3d chip-blue"></span>
+          <span class="chip-3d chip-green"></span>
+        </div>
         <div class="game-card-top">
           <div class="game-number">01</div>
           <div class="game-badge game-badge-live">BOT + ONLINE</div>
@@ -55,6 +84,10 @@
 
       <article class="game-card game-active" id="card-revolver">
         <div class="game-card-glow"></div>
+        <div class="game-chips">
+          <span class="chip-3d chip-gold"></span>
+          <span class="chip-3d chip-red"></span>
+        </div>
         <div class="game-card-top">
           <div class="game-number">02</div>
           <div class="game-badge game-badge-live">BOT</div>
@@ -79,6 +112,11 @@
 
       <article class="game-card game-active" id="card-cartas">
         <div class="game-card-glow"></div>
+        <div class="game-chips">
+          <span class="chip-3d chip-blue"></span>
+          <span class="chip-3d chip-gold"></span>
+          <span class="chip-3d chip-green"></span>
+        </div>
         <div class="game-card-top">
           <div class="game-number">03</div>
           <div class="game-badge game-badge-live">BOT</div>
@@ -97,6 +135,36 @@
         </div>
         <a href="#/cartas-distrito" class="game-btn game-btn-play" data-casino-play-button>
           <span>Jugar cartas</span>
+          <span class="btn-arrow">+</span>
+        </a>
+      </article>
+
+      <article class="game-card game-active" id="card-poker-fichas">
+        <div class="game-card-glow"></div>
+        <div class="game-chips">
+          <span class="chip-3d chip-red"></span>
+          <span class="chip-3d chip-gold"></span>
+          <span class="chip-3d chip-blue"></span>
+          <span class="chip-3d chip-green"></span>
+        </div>
+        <div class="game-card-top">
+          <div class="game-number">04</div>
+          <div class="game-badge game-badge-live">BOT</div>
+        </div>
+        <div class="game-icon-wrap">
+          <div class="game-icon-3d">
+            <div class="dice-face">🎲</div>
+          </div>
+        </div>
+        <h3 class="game-name">Fichas de la Calle</h3>
+        <p class="game-desc">Adivina qué fichas suman más. Elige 2, compáralas con el bot y duplica tu apuesta.</p>
+        <div class="game-tags">
+          <span class="tag">1 moneda</span>
+          <span class="tag">Bot</span>
+          <span class="tag">Sorteo</span>
+        </div>
+        <a href="#/poker-fichas" class="game-btn game-btn-play" data-casino-play-button>
+          <span>Jugar fichas</span>
           <span class="btn-arrow">+</span>
         </a>
       </article>

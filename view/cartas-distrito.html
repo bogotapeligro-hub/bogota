@@ -52,7 +52,7 @@
         <span class="badge-wip">ONLINE</span>
       </button>
       <button class="btn-ghost" onclick="CartasDistrito.exitToCasino()">🏠 SALIR AL CASINO</button>
-      <button class="btn-ghost" onclick="CartasDistrito.toggleMusic()">🎵 MÚSICA</button>
+      <button class="btn-ghost" data-cartas-music onclick="CartasDistrito.toggleMusic()">🔇 Música</button>
     </div>
 
     <div class="rules-toggle" onclick="CartasDistrito.toggleRules()">📜 Ver reglas rápidas</div>
@@ -71,11 +71,12 @@
 <div id="screen-game" class="screen">
   <div class="scanlines"></div>
 
-  <div class="game-topbar">
-    <button class="btn-back" onclick="CartasDistrito.exitToCasino()">← Salir al casino</button>
-    <div class="topbar-center"><span class="game-title-mini">BLACKJACK ROLO</span></div>
-    <div class="topbar-coins">🪙 <span id="game-coins">5</span></div>
-  </div>
+    <div class="game-topbar">
+      <button class="btn-back" onclick="CartasDistrito.exitToCasino()">← Salir al casino</button>
+      <button class="btn-back" data-cartas-music onclick="CartasDistrito.toggleMusic()" style="left:auto;right:70px">🔇 Música</button>
+      <div class="topbar-center"><span class="game-title-mini">BLACKJACK ROLO</span></div>
+      <div class="topbar-coins">🪙 <span id="game-coins">5</span></div>
+    </div>
 
   <div class="bet-display">APUESTA: <span id="game-bet">1</span> 🪙</div>
 

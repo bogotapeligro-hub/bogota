@@ -1,0 +1,99 @@
+<div id="pf-screen-menu" class="pf-screen pf-active">
+  <div class="pf-scanlines"></div>
+  <div class="pf-menu-bg-glow"></div>
+
+  <div class="pf-menu-content">
+    <div class="pf-logo-wrap">
+      <div class="pf-logo-eyebrow">★ CASINO ARCADE ★</div>
+      <h1 class="pf-logo-title">FICHAS<br><span>DE LA CALLE</span></h1>
+      <div class="pf-logo-tagline">Adivina, arriesga, gana</div>
+    </div>
+
+    <div class="pf-chip-display-intro">
+      <div class="pf-intro-chip pf-chip-red"></div>
+      <div class="pf-intro-chip pf-chip-blue"></div>
+      <div class="pf-intro-chip pf-chip-green"></div>
+      <div class="pf-intro-chip pf-chip-gold"></div>
+    </div>
+
+    <div class="pf-balance-bar">
+      <span class="pf-bal-label">SALDO</span>
+      <span class="pf-bal-coins" data-pf-coins>5 🪙</span>
+    </div>
+
+    <div class="pf-rules-panel">
+      <h3>🎯 CÓMO JUGAR</h3>
+      <p>🃏 Se muestran <b>4 fichas</b> boca abajo con valores ocultos (1–10).</p>
+      <p>👆 Elige <b>2 fichas</b> — serán tuyas. El bot toma las otras 2.</p>
+      <p>🏆 <b>Suma más que el bot</b> para ganar. Te llevas el doble de lo apostado.</p>
+      <p>🤝 Empate = recuperas tu apuesta.</p>
+      <p>💰 Cada ronda cuesta <b>1 moneda</b>.</p>
+    </div>
+
+    <button class="pf-btn-primary" data-pf-action="start">
+      <span class="pf-btn-icon">🎰</span> JUGAR (1 MONEDA)
+    </button>
+    <button class="pf-btn-ghost" data-pf-action="exit">🏠 SALIR AL CASINO</button>
+    <button class="pf-btn-ghost" data-pf-music onclick="PokerFichas.toggleMusic()">🔇 Música</button>
+  </div>
+</div>
+
+<div id="pf-screen-game" class="pf-screen">
+  <div class="pf-scanlines"></div>
+
+  <div class="pf-hud-top">
+    <button class="pf-btn-back" data-pf-action="exit">← Salir</button>
+    <button class="pf-btn-back" data-pf-music onclick="PokerFichas.toggleMusic()" style="left:auto;right:12px">🔇 Música</button>
+    <div class="pf-hud-center">
+      <span class="pf-hud-coins" data-pf-coins>5 🪙</span>
+      <span class="pf-hud-round" data-pf-round>Ronda 1</span>
+    </div>
+    <div class="pf-hud-spacer"></div>
+  </div>
+
+  <div class="pf-arena">
+    <div class="pf-status-bar">
+      <span class="pf-status-text" data-pf-status>Elige tus 2 fichas</span>
+      <span class="pf-status-sub" data-pf-status-sub></span>
+    </div>
+
+    <div class="pf-table">
+      <div class="pf-zone pf-zone-bot">
+        <div class="pf-zone-label">BOT</div>
+        <div class="pf-cards" data-pf-cards-bot></div>
+        <div class="pf-score" data-pf-score-bot>—</div>
+      </div>
+
+      <div class="pf-divider">
+        <div class="pf-divider-line"></div>
+        <div class="pf-divider-vs">⚡</div>
+        <div class="pf-divider-line"></div>
+      </div>
+
+      <div class="pf-zone pf-zone-player">
+        <div class="pf-zone-label">TÚ</div>
+        <div class="pf-cards" data-pf-cards-player></div>
+        <div class="pf-score" data-pf-score-player>—</div>
+      </div>
+    </div>
+
+    <div class="pf-bottom-panel">
+      <div class="pf-pick-info" data-pf-pick-info>Haz clic en 2 fichas para seleccionarlas</div>
+      <button class="pf-btn-action" data-pf-action="reveal" disabled>REVELAR</button>
+    </div>
+  </div>
+</div>
+
+<div id="pf-screen-end" class="pf-screen">
+  <div class="pf-scanlines"></div>
+  <div class="pf-end-content">
+    <div class="pf-end-icon" data-pf-end-icon>🏆</div>
+    <h2 class="pf-end-title" data-pf-end-title>¡GANASTE!</h2>
+    <div class="pf-end-sub" data-pf-end-sub></div>
+    <div class="pf-end-coins" data-pf-end-coins>+0 🪙</div>
+    <div class="pf-end-stats" data-pf-end-stats></div>
+    <button class="pf-btn-primary" data-pf-action="restart">🔄 OTRA RONDA</button>
+    <button class="pf-btn-ghost" data-pf-action="exit">🏠 SALIR AL CASINO</button>
+    <button class="pf-btn-ghost" data-pf-music onclick="PokerFichas.toggleMusic()">🔇 Música</button>
+  </div>
+</div>

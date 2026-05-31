@@ -3,6 +3,7 @@ const Feed = (() => {
     const items = [
       ["Inicio", "#/feed"],
       ["Publicar", "#/create-post"],
+      ["Shorts", "#/shorts"],
       ["Chat", "#/chat"],
       ["Mapa", "#/mapa"],
       ["¿Quieres jugar?", "#/casino"],
@@ -80,10 +81,14 @@ const Feed = (() => {
         .filter((post) => post.status === "active")
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       let posts = allPosts;
-      const { cat, tag, loc, sort } = filters;
+      const { cat, tag, loc, sort, q } = filters;
       if (cat) posts = posts.filter((post) => post.category === cat);
       if (tag) posts = posts.filter((post) => Posts.parseTags(post.tags).map((x) => x.toLowerCase()).includes(tag.toLowerCase()));
       if (loc) posts = posts.filter((post) => String(post.location || "").toLowerCase().includes(loc.toLowerCase()));
+      if (q) {
+        const ql = q.toLowerCase();
+        posts = posts.filter((post) => post.title.toLowerCase().includes(ql) || post.description.toLowerCase().includes(ql) || post.location.toLowerCase().includes(ql) || (post.tags || "").toLowerCase().includes(ql));
+      }
       posts = sortPosts(posts, sort);
 
       const layout = document.querySelector(".feed-layout");
@@ -94,10 +99,11 @@ const Feed = (() => {
       layout.insertAdjacentHTML("beforeend", rightbar(allPosts));
       feedPosts.innerHTML = posts.length
         ? posts.map((post) => Posts.card(post)).join("")
-        : UI.emptyState("No hay publicaciones", cat || tag || loc ? "No hay reportes activos con ese filtro." : "Todavia no hay publicaciones registradas en la base de datos.", `<a class="warning-btn inline-btn" href="#/create-post">Crear publicacion</a>`);
+        : UI.emptyState("No hay publicaciones", cat || tag || loc || q ? "No hay reportes activos con esos filtros." : "Todavia no hay publicaciones registradas. ¡Se el primero en reportar!", `<a class="warning-btn inline-btn" href="#/create-post">Crear publicacion</a>`, "📭");
 
       bindFeedActions();
       bindFeedFilters();
+      bindFeedSearch();
     } catch (error) {
       const feedPosts = document.getElementById("feedPosts");
       if (feedPosts) {
@@ -118,6 +124,10 @@ const Feed = (() => {
     const option = (value, label, selected) => `<option value="${UI.escapeHTML(value)}" ${value === selected ? "selected" : ""}>${UI.escapeHTML(label)}</option>`;
     return `
       <section class="feed-tools" aria-label="Filtros de publicaciones">
+        <div class="feed-search-bar">
+          <input type="search" id="feedSearchInput" class="feed-search-input" placeholder="Buscar publicaciones..." value="${UI.escapeHTML(filters.q || "")}" />
+          <button class="ghost-btn" id="feedSearchClear">Limpiar</button>
+        </div>
         <div class="feed-tools-row">
           <label>
             <span>Localidad</span>
@@ -147,6 +157,35 @@ const Feed = (() => {
     `;
   }
 
+  function bindFeedSearch() {
+    const input = document.getElementById("feedSearchInput");
+    const clear = document.getElementById("feedSearchClear");
+    if (!input) return;
+    const handler = () => {
+      const q = input.value.trim();
+      const params = new URLSearchParams(location.hash.split("?")[1] || "");
+      if (q) params.set("q", q); else params.delete("q");
+      location.hash = `#/feed${params.toString() ? `?${params}` : ""}`;
+    };
+    let debounceTimer;
+    input.addEventListener("input", () => {
+      clearDebounceTimer(debounceTimer);
+      debounceTimer = setTimeout(handler, 400);
+    });
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { clearDebounceTimer(debounceTimer); handler(); }
+    });
+    clear?.addEventListener("click", () => {
+      input.value = "";
+      clearDebounceTimer(debounceTimer);
+      handler();
+    });
+  }
+
+  function clearDebounceTimer(timer) {
+    if (timer) { clearTimeout(timer); }
+  }
+
   function sortPosts(posts, sort = "recent") {
     const list = [...posts];
     if (sort === "commented") return list.sort((a, b) => Number(b.commentCount || 0) - Number(a.commentCount || 0) || new Date(b.createdAt) - new Date(a.createdAt));
@@ -174,6 +213,7 @@ const Feed = (() => {
     Reactions.bind(document);
     Posts.bindReportButtons(document);
     Posts.bindShareButtons(document);
+    Posts.bindSaveButtons(document);
     Posts.bindAdminInline(document);
     Comments.bindModerationButtons(document);
     document.querySelectorAll("[data-open-post]").forEach((card) => {

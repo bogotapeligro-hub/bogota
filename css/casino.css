@@ -445,6 +445,77 @@ button.disabled-play-button {
   margin-bottom: 1.2rem;
 }
 
+.game-chips {
+  position: absolute;
+  top: 12px;
+  right: 60px;
+  display: flex;
+  gap: 2px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.chip-3d {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: inline-block;
+  border: 2px dashed rgba(255,255,255,0.3);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4), inset 0 1px 2px rgba(255,255,255,0.2);
+  transform: rotate(15deg);
+  animation: chipFloat 3s ease-in-out infinite;
+}
+
+.chip-3d:nth-child(2) { animation-delay: 0.5s; transform: rotate(-10deg) translateY(-4px); }
+.chip-3d:nth-child(3) { animation-delay: 1s; transform: rotate(5deg) translateY(-2px); }
+.chip-3d:nth-child(4) { animation-delay: 1.5s; transform: rotate(-20deg) translateY(-6px); }
+
+.chip-red { background: radial-gradient(circle at 35% 35%, #ff6b6b, #cc0000); }
+.chip-blue { background: radial-gradient(circle at 35% 35%, #6bb5ff, #0044cc); }
+.chip-green { background: radial-gradient(circle at 35% 35%, #6bff8b, #00aa33); }
+.chip-gold { background: radial-gradient(circle at 35% 35%, #ffe66b, #ccaa00); }
+
+@keyframes chipFloat {
+  0%, 100% { transform: rotate(15deg) translateY(0); }
+  50% { transform: rotate(15deg) translateY(-6px); }
+}
+
+.casino-stats-row {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  padding: 16px 20px;
+  flex-wrap: wrap;
+}
+
+.casino-stat-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid #2a2a3e;
+  border-radius: 12px;
+  padding: 12px 20px;
+  min-width: 140px;
+}
+
+.casino-stat-icon {
+  font-size: 1.5rem;
+}
+
+.casino-stat-card strong {
+  display: block;
+  font-size: 1.2rem;
+  color: #FFD600;
+}
+
+.casino-stat-card small {
+  font-size: 0.75rem;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
 .game-tags {
   display: flex; gap: .5rem; flex-wrap: wrap;
   margin-bottom: 1.4rem;
