@@ -308,8 +308,22 @@
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
 }
-.post-actions { display: grid; gap: 10px; margin-top: 12px; }
-.reaction-group { display: flex; gap: 8px; flex-wrap: wrap; }
+.post-status-row > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.post-actions {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,0.07);
+}
+.reaction-group {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  gap: 8px;
+}
 .reaction-btn {
   display: inline-flex;
   align-items: center;
@@ -318,12 +332,58 @@
   padding: 8px 11px;
   font-size: 0.86rem;
   min-height: 40px;
+  width: 100%;
+  min-width: 0;
+  text-align: center;
 }
 .reaction-emoji { font-size: 1.1rem; line-height: 1; }
 .reaction-label { overflow-wrap: anywhere; }
 .reaction-btn.selected { border-color: rgba(255,212,59,0.75); background: rgba(255,212,59,0.16); }
-.action-btn { width: fit-content; }
-.admin-inline-controls { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 12px; }
+.post-action-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(138px, 1fr));
+  gap: 8px;
+}
+.action-btn {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 9px 12px;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.15;
+}
+.action-btn[data-saved="1"],
+.action-save[data-saved="1"] {
+  border-color: rgba(255,212,59,0.58);
+  background: rgba(255,212,59,0.14);
+  color: var(--yellow);
+}
+.action-btn.danger {
+  border-color: rgba(255,59,59,0.32);
+  color: #fecaca;
+}
+.action-btn.danger:hover {
+  border-color: rgba(255,59,59,0.62);
+  background: rgba(255,59,59,0.12);
+}
+.admin-inline-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+  gap: 8px;
+  padding-top: 12px;
+}
+.admin-inline-controls .mini-btn,
+.admin-inline-controls .status-badge {
+  width: 100%;
+  justify-content: center;
+  text-align: center;
+}
 .mini-btn { padding: 7px 10px; font-size: 0.82rem; }
 
 /* Chat conversation list */

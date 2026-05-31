@@ -193,7 +193,9 @@ function registerUser(payload) {
 
   const sheet = getSheet("Users");
   const users = sheetToObjects(sheet);
-  if (users.some(function(u) { return u.username === username; })) throw new Error("Ese usuario ya existe.");
+  if (users.some(function(u) { return normalizeUsername(u.username) === username; })) {
+    throw new Error("Otra persona ya usa ese nombre de usuario. Prueba con otro.");
+  }
 
   const salt = makeSalt();
   const user = {

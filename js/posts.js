@@ -251,13 +251,15 @@ const Posts = (() => {
         ${reportWarning}
         <div class="post-actions">
           ${Reactions.renderButtons("post", post.postId)}
-          <button class="action-btn" data-comment-open="${safePostId}">Comentar</button>
-          <button class="action-btn" data-confirm-post="${safePostId}">Confirmo (${post.confirmCount})</button>
-          <button class="action-btn" data-doubt-post="${safePostId}">Dudosa (${post.doubtCount})</button>
-          <button class="action-btn action-save" data-save-post="${safePostId}" data-saved="${isSaved ? "1" : "0"}">${isSaved ? "Guardado" : "Guardar"}</button>
-          <button class="action-btn action-share" data-share-post="${safePostId}">Compartir</button>
-          <button class="action-btn" data-chat-share-post="${safePostId}">Enviar por chat</button>
-          <button class="action-btn danger" data-report-target="post" data-target-id="${safePostId}">Reportar</button>
+          <div class="post-action-grid">
+            <button class="action-btn" data-comment-open="${safePostId}">Comentar</button>
+            <button class="action-btn" data-confirm-post="${safePostId}">Confirmo (${post.confirmCount})</button>
+            <button class="action-btn" data-doubt-post="${safePostId}">Dudosa (${post.doubtCount})</button>
+            <button class="action-btn action-save" data-save-post="${safePostId}" data-saved="${isSaved ? "1" : "0"}">${isSaved ? "Guardado" : "Guardar"}</button>
+            <button class="action-btn action-share" data-share-post="${safePostId}">Compartir</button>
+            <button class="action-btn" data-chat-share-post="${safePostId}">Enviar por chat</button>
+            <button class="action-btn danger" data-report-target="post" data-target-id="${safePostId}">Reportar</button>
+          </div>
         </div>
         ${isAdminControls}
       </article>

@@ -111,6 +111,14 @@ const Auth = (() => {
     location.hash = "#/login";
   }
 
+  function friendlyAuthError(error) {
+    const message = String(error?.message || error || "");
+    if (/usuario.*(existe|usa)|nombre de usuario/i.test(message)) {
+      return "Otra persona ya usa ese nombre de usuario. Prueba con otro.";
+    }
+    return message || "No se pudo completar la accion.";
+  }
+
   function logout() {
     clearSession();
     UI.toast("Sesion cerrada.", "info");
@@ -123,7 +131,7 @@ const Auth = (() => {
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
       const button = form.querySelector("button[type='submit']");
-      const username = form.username.value.trim();
+      const username = form.username.value.trim().toLowerCase();
       const password = form.password.value;
       if (!username || !password) return UI.toast("Completa usuario y contrasena.", "warning");
       try {
@@ -159,7 +167,7 @@ const Auth = (() => {
         UI.setLoading(button, true, "Creando cuenta...");
         await register(username, password, ageConfirmed);
       } catch (error) {
-        UI.toast(error.message, "error");
+        UI.toast(friendlyAuthError(error), "error");
       } finally {
         UI.setLoading(button, false);
       }

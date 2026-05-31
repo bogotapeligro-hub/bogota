@@ -72,7 +72,10 @@
   .rules-card,
   .admin-hero,
   .admin-panel { border-radius: 18px; padding: 18px; }
-  .post-actions { display: block; }
+  .post-actions {
+    gap: 10px;
+    margin-top: 12px;
+  }
   .post-detail-panel {
     min-height: calc(100dvh - var(--topbar-height) - 28px);
   }
@@ -116,8 +119,15 @@
     max-height: none;
   }
   .bottom-nav { display: flex; }
-  .reaction-group { margin-bottom: 8px; }
-  .action-btn { margin: 4px 4px 4px 0; }
+  .reaction-group,
+  .post-action-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .action-btn {
+    min-height: 44px;
+    padding: 9px 8px;
+    font-size: 0.82rem;
+  }
   .form-grid,
   .rule-grid { grid-template-columns: 1fr; }
   .media-upload-preview.has-media,
@@ -232,5 +242,17 @@
     padding: 9px 8px;
   }
   .reaction-label { font-size: 0.78rem; }
+  .post-action-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 7px;
+  }
+  .post-action-grid .danger {
+    grid-column: 1 / -1;
+  }
+  .action-btn {
+    min-height: 42px;
+    padding: 8px 7px;
+    font-size: 0.76rem;
+  }
   .comment-actions .reaction-group { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
